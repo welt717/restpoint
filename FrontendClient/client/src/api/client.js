@@ -21,8 +21,27 @@ api.interceptors.request.use((config) => {
   }
   
   // Attach tenant slug from active tenant store if available
-  const tenantSlug = localStorage.getItem('tenant_slug') || 'system_shared';
-  config.headers['x-tenant-slug'] = tenantSlug;
+  // Check multiple possible keys for tenant slug
+  let tenantSlug = 
+    localStorage.getItem('tenant_slug') || 
+    localStorage.getItem('tenantSlug');
+  
+  // If not found, try to extract from stored user data
+  if (!tenantSlug) {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      // Check various possible fields in user data
+      tenantSlug = userData.tenantSlug || 
+                   userData.tenant_slug || 
+                   userData.tenant?.slug ||
+                   null;
+    } catch (e) {
+      // Ignore parsing errors
+    }
+  }
+  
+  // Default to system_shared if still not found
+  config.headers['x-tenant-slug'] = tenantSlug || 'system_shared';
   
   return config;
 }, (error) => {

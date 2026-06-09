@@ -1,0 +1,108 @@
+/* Fabric Canvas Styling */
+
+.fabric-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-btn {
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  color: #495057;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.toolbar-btn.active {
+  background: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.zoom-display {
+  min-width: 50px;
+  text-align: center;
+  font-weight: 500;
+  color: #495057;
+  font-size: 14px;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: #dee2e6;
+}
+
+.fabric-canvas {
+  flex: 1;
+  background: white;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: crosshair;
+}
+
+.fabric-canvas:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px #0d6efd;
+}
+
+/* Canvas Grid Background */
+.fabric-canvas-wrapper.grid-enabled .fabric-canvas {
+  background-image:
+    linear-gradient(0deg, transparent 24%, rgba(200, 200, 200, 0.1) 25%, rgba(200, 200, 200, 0.1) 26%, transparent 27%, transparent 74%, rgba(200, 200, 200, 0.1) 75%, rgba(200, 200, 200, 0.1) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(200, 200, 200, 0.1) 25%, rgba(200, 200, 200, 0.1) 26%, transparent 27%, transparent 74%, rgba(200, 200, 200, 0.1) 75%, rgba(200, 200, 200, 0.1) 76%, transparent 77%, transparent);
+  background-size: 50px 50px;
+}
+
+/* Selected object styling */
+.fabric-canvas :focus {
+  outline: 2px solid #0d6efd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .canvas-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .toolbar-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .zoom-display {
+    min-width: 40px;
+    font-size: 12px;
+  }
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Loader2,
   PlusCircle,
@@ -17,46 +18,46 @@ import {
   RefreshCw,
   Calendar,
   Filter,
-  Smartphone,
   FileText,
 } from 'lucide-react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import ExportModal from './ExportModal';
 
-const API_BASE_URL = 'http://localhost:5000';
+// API Configuration
+const API_GATEWAY_URL = 'http://localhost:8000';
+const DECEASED_BASE_URL = `${API_GATEWAY_URL}/api/v1/restpoint/deceased`;
 
-// --- BOLD, HIGH-CONTRAST Color Palette (Version 4: Updated Status/Refresh Colors) ---
+// Use API client that handles auth and tenant slug
+import api from '../../api/client';
+import { ENDPOINTS } from '../../api/endpoints';
+
+// Colors
 const Colors = {
-  // Base Colors
   primaryDark: '#2C3E50',
   accentBlue: '#1e293b',
   white: '#FFFFFF',
   lightGray: '#F7F9FB',
   mediumGray: '#E9ECEF',
   darkGray: '#1e293b',
-
-  // Status Colors - BOLD and DISTINCT
   successGreen: '#1DB954',
-  dangerRed: '#C0392B', // Used for Refresh Button and main Danger color
-
-  // Distinct Colors for Kin/Autopsy Ticks
+  dangerRed: '#C0392B',
   kinSuccess: '#00A896',
   kinDanger: '#E71D36',
   autopsySuccess: '#6A0572',
   autopsyDanger: '#FF9F1C',
-
   warningYellow: '#F39C12',
   infoBlue: '#1e293b',
   tableBorder: '#E9ECEF',
   headerBg: '#1e293b',
   hoverGray: '#F0F3F5',
-
-  // Updated Status Pill Colors based on new workflow: Received, underCare, Ready, Completed
-  statusReceived: '#6A0572', // Deep Purple for start status
-  statusUnderCare: '#F39C12', // Warning Yellow for in-progress
-  statusReady: '#1DB954', // Accent Blue for ready state
-  statusCompleted: '#C0392B', // Danger Red (as requested for the refresh button, now used for completed)
+  statusReceived: '#6A0572',
+  statusUnderCare: '#F39C12',
+  statusReady: '#1DB954',
+  statusCompleted: '#C0392B',
 };
 
-// --- Keyframe Animations ---
+// Animations
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -67,7 +68,7 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-// --- Shared Styled Components ---
+// Styled Components
 const AppContainer = styled.div`
   min-height: 100vh;
   background-color: ${Colors.lightGray};
@@ -101,18 +102,89 @@ const Title = styled.h1`
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin: 0;
 
   svg {
     color: ${Colors.accentBlue};
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
 
   @media (max-width: 768px) {
     font-size: 1.3rem;
-
     svg {
-      font-size: 2rem;
+      font-size: 1.8rem;
     }
+  }
+`;
+
+// NEW: Search Bar Container - Replaces the old title position
+const SearchBarContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  max-width: 500px;
+  
+  @media (max-width: 768px) {
+    max-width: 100%;
+    width: 100%;
+    order: 2;
+    margin-top: 0.5rem;
+  }
+`;
+
+const SearchInputWrapper = styled.div`
+  position: relative;
+  flex: 1;
+  
+  input {
+    width: 100%;
+    padding: 0.7rem 1rem 0.7rem 2.5rem;
+    border: 1px solid ${Colors.mediumGray};
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    color: ${Colors.darkGray};
+    transition: all 0.3s ease;
+    background-color: ${Colors.white};
+    
+    &:focus {
+      outline: none;
+      border-color: ${Colors.accentBlue};
+      box-shadow: 0 0 0 3px rgba(5, 102, 141, 0.15);
+    }
+    
+    &::placeholder {
+      color: #9ca3af;
+      font-size: 0.8rem;
+    }
+  }
+  
+  svg {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: ${Colors.darkGray};
+    font-size: 1.1rem;
+    pointer-events: none;
+  }
+`;
+
+const ClearSearchButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${Colors.darkGray};
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: ${Colors.mediumGray};
+    color: ${Colors.dangerRed};
   }
 `;
 
@@ -168,7 +240,6 @@ const PrimaryButton = styled.button`
   @media (max-width: 768px) {
     padding: 0.6rem 0.8rem;
     font-size: 0.8rem;
-
     svg {
       margin-right: 0.3rem;
       font-size: 1rem;
@@ -179,7 +250,6 @@ const PrimaryButton = styled.button`
 const ReportButton = styled(PrimaryButton)`
   background-color: #6a0572;
   box-shadow: 0 2px 5px rgba(106, 5, 114, 0.2);
-
   &:hover {
     background-color: #5a0462;
     box-shadow: 0 4px 8px rgba(106, 5, 114, 0.3);
@@ -193,7 +263,6 @@ const StyledCard = styled.div`
   border: 1px solid ${Colors.tableBorder};
 `;
 
-// Updated Filter Container with mobile support
 const FilterContainer = styled.div`
   display: flex;
   align-items: center;
@@ -209,11 +278,9 @@ const FilterContainer = styled.div`
   &::-webkit-scrollbar {
     height: 4px;
   }
-
   &::-webkit-scrollbar-track {
     background: ${Colors.mediumGray};
   }
-
   &::-webkit-scrollbar-thumb {
     background: ${Colors.accentBlue};
     border-radius: 2px;
@@ -224,7 +291,6 @@ const FilterContainer = styled.div`
     align-items: stretch;
     gap: 0.8rem;
     padding: 0.8rem;
-
     ${({ showFilters }) =>
       !showFilters &&
       css`
@@ -235,7 +301,6 @@ const FilterContainer = styled.div`
 
 const MobileFilterToggle = styled.div`
   display: none;
-
   @media (max-width: 768px) {
     display: flex;
     align-items: center;
@@ -247,7 +312,6 @@ const MobileFilterToggle = styled.div`
     cursor: pointer;
     font-weight: 600;
     color: ${Colors.primaryDark};
-
     svg {
       color: ${Colors.accentBlue};
     }
@@ -259,10 +323,8 @@ const FilterGroup = styled.div`
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-
   @media (max-width: 768px) {
     justify-content: space-between;
-
     &:not(:first-child) {
       border-top: 1px solid ${Colors.mediumGray};
       padding-top: 0.8rem;
@@ -278,12 +340,10 @@ const FilterLabel = styled.label`
   gap: 0.4rem;
   font-size: 0.85rem;
   white-space: nowrap;
-
   svg {
     color: ${Colors.accentBlue};
     font-size: 1rem;
   }
-
   @media (max-width: 768px) {
     min-width: 80px;
     font-size: 0.8rem;
@@ -298,13 +358,11 @@ const InputStyle = css`
   color: ${Colors.darkGray};
   transition: all 0.3s ease-in-out;
   background-color: ${Colors.white};
-
   &:focus {
     outline: none;
     border-color: ${Colors.accentBlue};
     box-shadow: 0 0 0 3px rgba(5, 102, 141, 0.15);
   }
-
   @media (max-width: 768px) {
     padding: 0.5rem 0.7rem;
     font-size: 0.8rem;
@@ -315,18 +373,15 @@ const YearFilterInput = styled.div`
   position: relative;
   min-width: 120px;
   max-width: 140px;
-
   input {
     ${InputStyle}
     width: 100%;
     padding-right: 0.75rem;
   }
-
   .year-select-container {
     position: relative;
     display: flex;
   }
-
   select {
     ${InputStyle}
     position: absolute;
@@ -338,30 +393,9 @@ const YearFilterInput = styled.div`
     z-index: 10;
     appearance: none;
   }
-
   @media (max-width: 768px) {
     min-width: 100px;
     max-width: 120px;
-  }
-`;
-
-const SearchInput = styled(YearFilterInput)`
-  min-width: 200px;
-  input {
-    padding: 0.6rem 0.8rem 0.6rem 2.2rem;
-  }
-  svg {
-    position: absolute;
-    left: 0.7rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: ${Colors.darkGray};
-    font-size: 1.1rem;
-    z-index: 5;
-  }
-
-  @media (max-width: 768px) {
-    min-width: 150px;
   }
 `;
 
@@ -372,7 +406,6 @@ const FilterSelect = styled.select`
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
   min-width: 120px;
-
   @media (max-width: 768px) {
     min-width: 100px;
   }
@@ -386,7 +419,6 @@ const TableContainer = styled.div`
 const StyledTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-
   thead th {
     background-color: ${Colors.headerBg};
     color: ${Colors.white};
@@ -397,7 +429,6 @@ const StyledTable = styled.table`
     letter-spacing: 0.05em;
     text-align: left;
     border-bottom: 2px solid ${Colors.accentBlue};
-
     &:first-child {
       border-top-left-radius: 0.8rem;
     }
@@ -408,35 +439,29 @@ const StyledTable = styled.table`
       text-align: center;
     }
   }
-
   tbody tr {
     background-color: ${Colors.white};
     transition: all 0.2s ease-in-out;
     border-bottom: 1px solid ${Colors.tableBorder};
-
     &:hover {
       background-color: ${Colors.hoverGray};
     }
-
     td {
       padding: 0.8rem 1rem;
       color: ${Colors.darkGray};
       font-size: 0.85rem;
       font-weight: 500;
       vertical-align: middle;
-
       &:nth-child(2) {
-        color: #6c757d; /* Duller color for Admission No */
+        color: #6c757d;
         font-weight: 400;
       }
     }
   }
-
   @media (max-width: 768px) {
     thead {
       display: none;
     }
-
     tbody tr {
       display: block;
       margin-bottom: 1rem;
@@ -444,7 +469,6 @@ const StyledTable = styled.table`
       border-radius: 0.6rem;
       padding: 1rem;
     }
-
     tbody td {
       display: flex;
       justify-content: space-between;
@@ -452,7 +476,6 @@ const StyledTable = styled.table`
       padding: 0.5rem 0;
       border: none;
       font-size: 0.8rem;
-
       &:before {
         content: attr(data-label);
         font-weight: 700;
@@ -461,12 +484,10 @@ const StyledTable = styled.table`
         font-size: 0.75rem;
         min-width: 80px;
       }
-
       &.mobile-full {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
-
         &:before {
           align-self: flex-start;
         }
@@ -475,7 +496,6 @@ const StyledTable = styled.table`
   }
 `;
 
-// Status Icon for Kin/Autopsy Checkmarks
 const StatusIcon = styled.div`
   display: flex;
   justify-content: center;
@@ -484,7 +504,6 @@ const StatusIcon = styled.div`
   height: 2rem;
   border-radius: 50%;
   margin: auto;
-
   background-color: ${(props) => {
     const statusColor =
       props.status === 'success'
@@ -498,10 +517,8 @@ const StatusIcon = styled.div`
           : props.type === 'autopsy'
             ? Colors.autopsyDanger
             : Colors.dangerRed;
-
     return `${statusColor}1A`;
   }};
-
   svg {
     color: ${(props) => {
       return props.status === 'success'
@@ -519,18 +536,15 @@ const StatusIcon = styled.div`
     font-size: 1.2rem;
     font-weight: 900;
   }
-
   @media (max-width: 768px) {
     width: 1.8rem;
     height: 1.8rem;
-
     svg {
       font-size: 1rem;
     }
   }
 `;
 
-// StatusPill Component for direct status text - UPDATED LOGIC
 const StatusPill = styled.span`
   display: inline-flex;
   padding: 0.3rem 0.6rem;
@@ -540,11 +554,8 @@ const StatusPill = styled.span`
   text-transform: capitalize;
   letter-spacing: 0.02em;
   white-space: nowrap;
-
   ${({ status }) => {
     let bgColor, textColor;
-
-    // --- UPDATED STATUS MAPPING ---
     switch (status ? status.toLowerCase() : '') {
       case 'received':
       case 'new':
@@ -572,20 +583,16 @@ const StatusPill = styled.span`
         bgColor = Colors.mediumGray;
         textColor = Colors.darkGray;
     }
-
     return css`
       background-color: ${bgColor};
       color: ${textColor};
     `;
   }}
-
   @media (max-width: 768px) {
     font-size: 0.75rem;
     padding: 0.2rem 0.5rem;
   }
 `;
-
-// --- Status Summary Component - Updated for clickable status filters ---
 
 const AnimatedLoader2 = styled(Loader2)`
   animation: ${spin} 1s linear infinite;
@@ -597,18 +604,15 @@ const ViewDetailsButton = styled(PrimaryButton)`
   border-radius: 0.4rem;
   background-color: ${Colors.infoBlue};
   box-shadow: 0 1px 5px rgba(52, 152, 219, 0.15);
-
   &:hover {
     background-color: #2980b9;
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(52, 152, 219, 0.25);
   }
-
   svg {
     margin-right: 0.3rem;
     font-size: 0.9rem;
   }
-
   @media (max-width: 768px) {
     width: 100%;
     justify-content: center;
@@ -630,7 +634,6 @@ const WarningMessage = styled.div`
   animation: ${fadeIn} 0.5s ease-out;
   white-space: nowrap;
   font-size: 0.85rem;
-
   svg {
     color: ${Colors.warningYellow};
     font-size: 1.2rem;
@@ -648,7 +651,6 @@ const CenteredContainer = styled.div`
   color: ${Colors.darkGray};
 `;
 
-// Updated Paginator for side-by-side layout - MOVED TO TOP
 const Paginator = styled.div`
   display: flex;
   justify-content: space-between;
@@ -661,7 +663,6 @@ const Paginator = styled.div`
   border-bottom: 2px solid ${Colors.accentBlue};
   flex-wrap: nowrap;
   gap: 1rem;
-
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 0.8rem;
@@ -674,7 +675,6 @@ const PaginationControls = styled.div`
   align-items: center;
   gap: 0.4rem;
   flex-wrap: nowrap;
-
   @media (max-width: 768px) {
     justify-content: center;
   }
@@ -691,26 +691,22 @@ const PaginationButton = styled.button`
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   white-space: nowrap;
-
   &:hover:not(:disabled) {
     background-color: ${Colors.accentBlue}20;
     color: ${Colors.accentBlue};
   }
-
   &:disabled {
     cursor: not-allowed;
     opacity: 0.5;
   }
 `;
 
-// Compact items per page selector
 const ItemsPerPageSelect = styled(FilterSelect)`
   min-width: 70px;
   padding: 0.4rem 0.6rem;
   font-size: 0.8rem;
 `;
 
-// Mobile Card View for deceased records
 const MobileCard = styled.div`
   background-color: ${Colors.white};
   border-radius: 0.8rem;
@@ -750,13 +746,11 @@ const MobileDetailRow = styled.div`
   justify-content: space-between;
   align-items: center;
   font-size: 0.85rem;
-
   .label {
     font-weight: 600;
     color: ${Colors.primaryDark};
     min-width: 80px;
   }
-
   .value {
     color: ${Colors.darkGray};
     font-weight: 500;
@@ -772,48 +766,7 @@ const MobileStatusRow = styled.div`
   margin: 0.8rem 0;
 `;
 
-// Report Modal Styles
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 1rem;
-`;
-
-const ModalContent = styled.div`
-  background: ${Colors.white};
-  padding: 2rem;
-  border-radius: 0.8rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  max-width: 500px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.h2`
-  color: ${Colors.primaryDark};
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const ModalButtons = styled.div`
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-`;
-
-// --- Utility Functions ---
+// Utility Functions
 const extractYear = (dateString) => {
   if (!dateString) return null;
   try {
@@ -824,62 +777,29 @@ const extractYear = (dateString) => {
   }
 };
 
-// Date utility functions for report generation
-const getDateRange = (period) => {
-  const now = new Date();
-  const start = new Date();
-  let end = new Date();
-
-  switch (period) {
-    case 'thisMonth':
-      start.setDate(1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      break;
-    case 'lastMonth':
-      start.setMonth(now.getMonth() - 1, 1);
-      end = new Date(now.getFullYear(), now.getMonth(), 0);
-      break;
-    case 'thisQuarter':
-      const quarter = Math.floor(now.getMonth() / 3);
-      start.setMonth(quarter * 3, 1);
-      end = new Date(now.getFullYear(), (quarter + 1) * 3, 0);
-      break;
-    case 'lastQuarter':
-      const lastQuarter = Math.floor((now.getMonth() - 3) / 3);
-      start.setMonth(lastQuarter * 3, 1);
-      end = new Date(now.getFullYear(), (lastQuarter + 1) * 3, 0);
-      break;
-    case 'thisYear':
-      start.setMonth(0, 1);
-      end = new Date(now.getFullYear(), 11, 31);
-      break;
-    case 'lastYear':
-      start.setFullYear(now.getFullYear() - 1, 0, 1);
-      end = new Date(now.getFullYear() - 1, 11, 31);
-      break;
-    case 'all':
-    default:
-      return { startDate: null, endDate: null };
-  }
-
-  return {
-    startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
-  };
+// Helper to get tenant slug
+const getTenantSlug = () => {
+  return localStorage.getItem('tenantSlug') || 
+         localStorage.getItem('tenant_slug') ||
+         (() => {
+           try {
+             const user = JSON.parse(localStorage.getItem('user') || '{}');
+             return user.tenantSlug || user.tenant?.slug || 'default';
+           } catch {
+             return 'default';
+           }
+         })();
 };
 
-// --- Main Deceased List Component ---
+// Main Component
 const AllDeceasedPage = () => {
   const navigate = useNavigate();
   const [allDeceasedRecords, setAllDeceasedRecords] = useState([]);
   const [filteredDeceasedRecords, setFilteredDeceasedRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [generatingReport, setGeneratingReport] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportPeriod, setReportPeriod] = useState('thisMonth');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -891,107 +811,61 @@ const AllDeceasedPage = () => {
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Check if mobile view
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Memoized list of unique years for the filter dropdown
+  // Memoized unique years
   const uniqueYears = useMemo(() => {
     const years = allDeceasedRecords
       .map((record) => extractYear(record.created_at))
       .filter((year) => year !== null);
-
     return [...new Set(years)].sort((a, b) => b - a);
   }, [allDeceasedRecords]);
 
-  // Memoized Status Count Calculation - UPDATED LOGIC
-  const statusCounts = useMemo(() => {
-    const counts = {
-      received: 0,
-      underCare: 0,
-      ready: 0,
-      completed: 0,
-      other: 0,
-      total: allDeceasedRecords.length,
-    };
-
-    allDeceasedRecords.forEach((record) => {
-      const status = (record.status || '').toLowerCase();
-
-      if (status.includes('received') || status.includes('new')) {
-        counts.received++;
-      } else if (
-        status.includes('undercare') ||
-        status.includes('pending') ||
-        status.includes('inprogress')
-      ) {
-        counts.underCare++;
-      } else if (status.includes('ready') || status.includes('awaitingcollection')) {
-        counts.ready++;
-      } else if (
-        status.includes('completed') ||
-        status.includes('released') ||
-        status.includes('discharged')
-      ) {
-        counts.completed++;
-      } else {
-        counts.other++;
-      }
-    });
-
-    return counts;
-  }, [allDeceasedRecords]);
-
-  // Fetch data function
+  // Fetch data
   const fetchDeceased = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/restpoint/deceased-all`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const token = localStorage.getItem('authToken');
+      const tenantSlug = getTenantSlug();
+      
+      const response = await axios.get(`${DECEASED_BASE_URL}/deceased-all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-tenant-slug': tenantSlug,
+        },
+      });
+      
+      const result = response.data;
       const records = result.data;
-
+      
       if (Array.isArray(records)) {
         const normalizedRecords = records
           .map((record) => ({
             ...record,
             current_status: record.status,
-            // Ensure boolean fields are properly handled
             has_kin: Boolean(record.has_kin),
             has_autopsy: Boolean(record.has_autopsy),
-            // Ensure deceased_id is available for navigation
             deceased_id: record.deceased_id || record.id,
           }))
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
         setAllDeceasedRecords(normalizedRecords);
         setFilteredDeceasedRecords(normalizedRecords);
       } else {
-        setError(result.message || 'No deceased records found or unexpected response format.');
+        setError(result.message || 'No deceased records found.');
         setAllDeceasedRecords([]);
         setFilteredDeceasedRecords([]);
       }
-
       setCurrentPage(1);
     } catch (err) {
       console.error('Error fetching deceased records:', err);
-      setError(
-        'Failed to load deceased records. Please ensure the backend is running and accessible at  IP  168.122.8.0  mumos  home servers ',
-      );
+      setError('Failed to load deceased records.');
     } finally {
       setLoading(false);
     }
@@ -1001,163 +875,136 @@ const AllDeceasedPage = () => {
     fetchDeceased();
   }, []);
 
-  // Generate Report Function with date range options
-  const generateReport = async () => {
-    setGeneratingReport(true);
+  // Export Function
+  const handleExport = async (exportOptions) => {
+    setExporting(true);
     try {
+      const token = localStorage.getItem('authToken');
+      const tenantSlug = getTenantSlug();
+      
       const queryParams = new URLSearchParams();
-
-      // Add period parameter
-      queryParams.append('period', reportPeriod);
-
-      // Add date range based on selection
-      if (reportPeriod === 'custom') {
-        if (customStartDate) queryParams.append('startDate', customStartDate);
-        if (customEndDate) queryParams.append('endDate', customEndDate);
-      } else {
-        const dateRange = getDateRange(reportPeriod);
-        if (dateRange.startDate) queryParams.append('startDate', dateRange.startDate);
-        if (dateRange.endDate) queryParams.append('endDate', dateRange.endDate);
+      queryParams.append('period', exportOptions.period);
+      if (exportOptions.startDate) queryParams.append('startDate', exportOptions.startDate);
+      if (exportOptions.endDate) queryParams.append('endDate', exportOptions.endDate);
+      if (exportOptions.includeFilters) {
+        if (statusFilter !== 'all') queryParams.append('status', statusFilter);
+        if (autopsyFilter !== 'all') queryParams.append('autopsy', autopsyFilter);
+        if (yearFilter !== 'all') queryParams.append('year', yearFilter);
+        if (searchTerm) queryParams.append('search', searchTerm);
       }
+      queryParams.append('format', exportOptions.format);
 
-      // Add current filters
-      if (statusFilter !== 'all') {
-        queryParams.append('status', statusFilter);
-      }
+      const url = `${DECEASED_BASE_URL}/export-excel?${queryParams.toString()}`;
+      
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-tenant-slug': tenantSlug,
+        },
+        responseType: 'blob',
+      });
 
-      if (autopsyFilter !== 'all') {
-        queryParams.append('hasAutopsy', autopsyFilter === 'performed' ? '1' : '0');
-      }
-
-      if (yearFilter !== 'all' && yearFilter.length === 4) {
-        queryParams.append('year', yearFilter);
-      }
-
-      const url = `${API_BASE_URL}/api/v1/restpoint/deceased/export-excel?${queryParams.toString()}`;
-
-      // Create a temporary anchor element to trigger download
+      const blob = new Blob([response.data], { 
+        type: exportOptions.format === 'csv' 
+          ? 'text/csv' 
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `deceased_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.href = downloadUrl;
+      a.download = `deceased_report_${new Date().toISOString().split('T')[0]}.${exportOptions.format === 'csv' ? 'csv' : 'xlsx'}`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-
-      setShowReportModal(false);
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      toast.success('Report exported successfully!');
+      setShowExportModal(false);
     } catch (error) {
-      console.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
+      console.error('Error exporting report:', error);
+      toast.error(error.response?.data?.message || 'Failed to export report. Please try again.');
     } finally {
-      setGeneratingReport(false);
+      setExporting(false);
     }
   };
 
   // Filtering Logic
   useEffect(() => {
     let currentFiltered = allDeceasedRecords;
-
-    // 1. Search Term Filter
     if (searchTerm) {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       currentFiltered = currentFiltered.filter(
         (record) =>
           (record.full_name && record.full_name.toLowerCase().includes(lowerCaseSearchTerm)) ||
-          (record.admission_number &&
-            record.admission_number.toLowerCase().includes(lowerCaseSearchTerm)),
+          (record.admission_number && record.admission_number.toLowerCase().includes(lowerCaseSearchTerm))
       );
     }
-
-    // 2. Autopsy Filter
     if (autopsyFilter === 'performed') {
       currentFiltered = currentFiltered.filter((record) => record.has_autopsy === true);
     } else if (autopsyFilter === 'notPerformed') {
       currentFiltered = currentFiltered.filter((record) => record.has_autopsy === false);
     }
-
-    // 3. Year Filter
     if (yearFilter !== 'all' && yearFilter.length === 4 && /^\d+$/.test(yearFilter)) {
       currentFiltered = currentFiltered.filter((record) => {
         const recordYear = extractYear(record.created_at);
         return recordYear === yearFilter;
       });
     }
-
-    // 4. Status Filter
     if (statusFilter !== 'all') {
       currentFiltered = currentFiltered.filter((record) => {
         const status = (record.status || '').toLowerCase();
-
         switch (statusFilter) {
           case 'received':
             return status.includes('received') || status.includes('new');
           case 'underCare':
-            return (
-              status.includes('undercare') ||
-              status.includes('pending') ||
-              status.includes('inprogress')
-            );
+            return status.includes('undercare') || status.includes('pending') || status.includes('inprogress');
           case 'ready':
             return status.includes('ready') || status.includes('awaitingcollection');
           case 'completed':
-            return (
-              status.includes('completed') ||
-              status.includes('released') ||
-              status.includes('discharged')
-            );
+            return status.includes('completed') || status.includes('released') || status.includes('discharged');
           default:
             return true;
         }
       });
     }
-
     setFilteredDeceasedRecords(currentFiltered);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [searchTerm, autopsyFilter, yearFilter, statusFilter, allDeceasedRecords]);
 
-  // Pagination Calculations
+  // Clear search
+  const clearSearch = () => {
+    setSearchTerm('');
+  };
+
+  // Pagination
   const totalPages = Math.ceil(filteredDeceasedRecords.length / itemsPerPage);
   const indexOfLastRecord = currentPage * itemsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - itemsPerPage;
   const currentRecords = filteredDeceasedRecords.slice(indexOfFirstRecord, indexOfLastRecord);
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
+  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
   const handleItemsPerPageChange = (e) => {
-    const newItemsPerPage = Number(e.target.value);
-    setItemsPerPage(newItemsPerPage);
+    setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
 
   const handleNewRegistrationClick = () => {
-    navigate('/register-deceased');
+    const tenantSlug = getTenantSlug();
+    navigate(`/rptenant/${tenantSlug}/deceased/register`);
   };
 
-  // FIXED: Use deceased_id for navigation instead of id
   const handleViewDetailsClick = (record) => {
-    // Use deceased_id if available, otherwise fall back to id
+    const tenantSlug = getTenantSlug();
     const deceasedId = record.deceased_id || record.id;
-    navigate(`/deceased-details/${deceasedId}`);
+    navigate(`/rptenant/${tenantSlug}/deceased/${deceasedId}`);
   };
 
-  // Custom year input handler
   const handleYearChange = (value) => {
     if (value === 'all' || (value.length <= 4 && /^\d*$/.test(value))) {
       setYearFilter(value);
     }
   };
 
-  // Status filter handler
-  const handleStatusFilter = (statusType) => {
-    if (statusFilter === statusType) {
-      setStatusFilter('all'); // Toggle off if already active
-    } else {
-      setStatusFilter(statusType); // Set to new status filter
-    }
-  };
-
-  // Clear all filters
   const clearAllFilters = () => {
     setSearchTerm('');
     setAutopsyFilter('all');
@@ -1165,149 +1012,89 @@ const AllDeceasedPage = () => {
     setStatusFilter('all');
   };
 
-  // Toggle filter visibility on mobile
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
-  };
+  const toggleFilters = () => setShowFilters(!showFilters);
 
-  // Generate pagination buttons
   const generatePaginationButtons = () => {
     const buttons = [];
     const maxVisiblePages = 5;
-
     if (totalPages <= maxVisiblePages) {
-      // Show all pages if total pages is less than or equal to maxVisiblePages
       for (let i = 1; i <= totalPages; i++) {
         buttons.push(
           <PaginationButton key={i} active={currentPage === i} onClick={() => handlePageChange(i)}>
             {i}
-          </PaginationButton>,
+          </PaginationButton>
         );
       }
     } else {
-      // Show limited pages with ellipsis
       if (currentPage <= 3) {
-        // Near the start
         for (let i = 1; i <= 4; i++) {
           buttons.push(
-            <PaginationButton
-              key={i}
-              active={currentPage === i}
-              onClick={() => handlePageChange(i)}
-            >
+            <PaginationButton key={i} active={currentPage === i} onClick={() => handlePageChange(i)}>
               {i}
-            </PaginationButton>,
+            </PaginationButton>
           );
         }
+        buttons.push(<span key="ellipsis1" style={{ padding: '0.4rem' }}>...</span>);
         buttons.push(
-          <span key="ellipsis1" style={{ padding: '0.4rem' }}>
-            ...
-          </span>,
-        );
-        buttons.push(
-          <PaginationButton
-            key={totalPages}
-            active={currentPage === totalPages}
-            onClick={() => handlePageChange(totalPages)}
-          >
+          <PaginationButton key={totalPages} active={currentPage === totalPages} onClick={() => handlePageChange(totalPages)}>
             {totalPages}
-          </PaginationButton>,
+          </PaginationButton>
         );
       } else if (currentPage >= totalPages - 2) {
-        // Near the end
         buttons.push(
-          <PaginationButton key={1} active={currentPage === 1} onClick={() => handlePageChange(1)}>
-            1
-          </PaginationButton>,
+          <PaginationButton key={1} active={currentPage === 1} onClick={() => handlePageChange(1)}>1</PaginationButton>
         );
-        buttons.push(
-          <span key="ellipsis2" style={{ padding: '0.4rem' }}>
-            ...
-          </span>,
-        );
+        buttons.push(<span key="ellipsis2" style={{ padding: '0.4rem' }}>...</span>);
         for (let i = totalPages - 3; i <= totalPages; i++) {
           buttons.push(
-            <PaginationButton
-              key={i}
-              active={currentPage === i}
-              onClick={() => handlePageChange(i)}
-            >
+            <PaginationButton key={i} active={currentPage === i} onClick={() => handlePageChange(i)}>
               {i}
-            </PaginationButton>,
+            </PaginationButton>
           );
         }
       } else {
-        // In the middle
         buttons.push(
-          <PaginationButton key={1} active={currentPage === 1} onClick={() => handlePageChange(1)}>
-            1
-          </PaginationButton>,
+          <PaginationButton key={1} active={currentPage === 1} onClick={() => handlePageChange(1)}>1</PaginationButton>
         );
-        buttons.push(
-          <span key="ellipsis3" style={{ padding: '0.4rem' }}>
-            ...
-          </span>,
-        );
+        buttons.push(<span key="ellipsis3" style={{ padding: '0.4rem' }}>...</span>);
         for (let i = currentPage - 1; i <= currentPage + 1; i++) {
           buttons.push(
-            <PaginationButton
-              key={i}
-              active={currentPage === i}
-              onClick={() => handlePageChange(i)}
-            >
+            <PaginationButton key={i} active={currentPage === i} onClick={() => handlePageChange(i)}>
               {i}
-            </PaginationButton>,
+            </PaginationButton>
           );
         }
+        buttons.push(<span key="ellipsis4" style={{ padding: '0.4rem' }}>...</span>);
         buttons.push(
-          <span key="ellipsis4" style={{ padding: '0.4rem' }}>
-            ...
-          </span>,
-        );
-        buttons.push(
-          <PaginationButton
-            key={totalPages}
-            active={currentPage === totalPages}
-            onClick={() => handlePageChange(totalPages)}
-          >
+          <PaginationButton key={totalPages} active={currentPage === totalPages} onClick={() => handlePageChange(totalPages)}>
             {totalPages}
-          </PaginationButton>,
+          </PaginationButton>
         );
       }
     }
-
     return buttons;
   };
 
-  // Render mobile card view
   const renderMobileCard = (record) => (
     <MobileCard key={record.id}>
       <MobileCardHeader>
         <MobileCardTitle>{record.full_name || 'Unknown'}</MobileCardTitle>
         <StatusPill status={record.status}>{record.status || 'Unknown'}</StatusPill>
       </MobileCardHeader>
-
       <MobileCardDetails>
         <MobileDetailRow>
           <span className="label">Admission No:</span>
           <span className="value">{record.admission_number || 'N/A'}</span>
         </MobileDetailRow>
-
         <MobileDetailRow>
           <span className="label">Date of Death:</span>
-          <span className="value">
-            {record.date_of_death ? new Date(record.date_of_death).toLocaleDateString() : 'N/A'}
-          </span>
+          <span className="value">{record.date_of_death ? new Date(record.date_of_death).toLocaleDateString() : 'N/A'}</span>
         </MobileDetailRow>
-
         <MobileDetailRow>
           <span className="label">Created:</span>
-          <span className="value">
-            {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
-          </span>
+          <span className="value">{record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}</span>
         </MobileDetailRow>
       </MobileCardDetails>
-
       <MobileStatusRow>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: '600' }}>Next of Kin:</span>
@@ -1315,7 +1102,6 @@ const AllDeceasedPage = () => {
             {record.has_kin ? <CheckCircle size={16} /> : <XCircle size={16} />}
           </StatusIcon>
         </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: '600' }}>Autopsy:</span>
           <StatusIcon type="autopsy" status={record.has_autopsy ? 'success' : 'danger'}>
@@ -1323,29 +1109,19 @@ const AllDeceasedPage = () => {
           </StatusIcon>
         </div>
       </MobileStatusRow>
-
-      {/* FIXED: Use deceased_id for navigation */}
       <ViewDetailsButton onClick={() => handleViewDetailsClick(record)}>
-        <Eye size={16} />
-        View Details
+        <Eye size={16} /> View Details
       </ViewDetailsButton>
     </MobileCard>
   );
 
-  // Render desktop table row
   const renderTableRow = (record) => (
     <tr key={record.id}>
       <td data-label="Full Name">{record.full_name || 'Unknown'}</td>
       <td data-label="Admission No">{record.admission_number || 'N/A'}</td>
-      <td data-label="Date of Death">
-        {record.date_of_death ? new Date(record.date_of_death).toLocaleDateString() : 'N/A'}
-      </td>
-      <td data-label="Created">
-        {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
-      </td>
-      <td data-label="Status" className="text-center">
-        <StatusPill status={record.status}>{record.status || 'Unknown'}</StatusPill>
-      </td>
+      <td data-label="Date of Death">{record.date_of_death ? new Date(record.date_of_death).toLocaleDateString() : 'N/A'}</td>
+      <td data-label="Created">{record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}</td>
+      <td data-label="Status" className="text-center"><StatusPill status={record.status}>{record.status || 'Unknown'}</StatusPill></td>
       <td data-label="Next of Kin" className="text-center">
         <StatusIcon type="kin" status={record.has_kin ? 'success' : 'danger'}>
           {record.has_kin ? <CheckCircle size={18} /> : <XCircle size={18} />}
@@ -1357,142 +1133,60 @@ const AllDeceasedPage = () => {
         </StatusIcon>
       </td>
       <td data-label="Actions" className="text-center">
-        {/* FIXED: Use deceased_id for navigation */}
         <ViewDetailsButton onClick={() => handleViewDetailsClick(record)}>
-          <Eye size={16} />
-          View Details
+          <Eye size={16} /> View Details
         </ViewDetailsButton>
       </td>
     </tr>
   );
 
-  // Report Modal Component
-  const ReportModal = () => (
-    <ModalOverlay onClick={() => setShowReportModal(false)}>
-      <ModalContent onClick={(e) => e.stopPropagation()}>
-        <ModalHeader>
-          <FileText size={24} />
-          Export to Exel Sheets
-        </ModalHeader>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <FilterLabel>Report Period:</FilterLabel>
-            <FilterSelect
-              value={reportPeriod}
-              onChange={(e) => setReportPeriod(e.target.value)}
-              style={{ width: '100%', marginTop: '0.5rem' }}
-            >
-              <option value="thisMonth">This Month</option>
-              <option value="lastMonth">Last Month</option>
-              <option value="thisQuarter">This Quarter</option>
-              <option value="lastQuarter">Last Quarter</option>
-              <option value="thisYear">This Year</option>
-              <option value="lastYear">Last Year</option>
-              <option value="all">All Time</option>
-              <option value="custom">Custom Date Range</option>
-            </FilterSelect>
-          </div>
-
-          {reportPeriod === 'custom' && (
-            <div
-              style={{ display: 'flex', gap: '1rem', flexDirection: isMobile ? 'column' : 'row' }}
-            >
-              <div style={{ flex: 1 }}>
-                <FilterLabel>Start Date:</FilterLabel>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  style={{ ...InputStyle, width: '100%', marginTop: '0.5rem' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <FilterLabel>End Date:</FilterLabel>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  style={{ ...InputStyle, width: '100%', marginTop: '0.5rem' }}
-                />
-              </div>
-            </div>
-          )}
-
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '1rem',
-              backgroundColor: Colors.lightGray,
-              borderRadius: '0.4rem',
-            }}
-          >
-            <strong>Current filters included in report:</strong>
-            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-              {statusFilter !== 'all' && <div>Status: {statusFilter}</div>}
-              {autopsyFilter !== 'all' && <div>Autopsy: {autopsyFilter}</div>}
-              {yearFilter !== 'all' && <div>Year: {yearFilter}</div>}
-              {searchTerm && <div>Search: "{searchTerm}"</div>}
-            </div>
-          </div>
-        </div>
-
-        <ModalButtons>
-          <PrimaryButton
-            onClick={() => setShowReportModal(false)}
-            style={{ backgroundColor: Colors.mediumGray, color: Colors.darkGray }}
-          >
-            Cancel
-          </PrimaryButton>
-          <ReportButton onClick={generateReport} disabled={generatingReport}>
-            {generatingReport ? <AnimatedLoader2 size={18} /> : <FileText size={18} />}
-            Export - Exel
-          </ReportButton>
-        </ModalButtons>
-      </ModalContent>
-    </ModalOverlay>
-  );
-
   return (
     <AppContainer>
+      <ToastContainer position="top-right" autoClose={3000} />
+      
       <ContentWrapper>
+        {/* Header Section - Now with Title + Search Bar + Buttons */}
         <HeaderSection>
-          <Title>
-            <Users size={28} />
-            All Deceased Records
-          </Title>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1, flexWrap: 'wrap' }}>
+           
+            
+            {/* Search Bar - Now placed here */}
+            <SearchBarContainer>
+              <SearchInputWrapper>
+                <Search size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Search by name or admission number..." 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <ClearSearchButton onClick={clearSearch} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)' }}>
+                    <X size={14} />
+                  </ClearSearchButton>
+                )}
+              </SearchInputWrapper>
+            </SearchBarContainer>
+          </div>
+          
           <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
             <PrimaryButton refresh onClick={fetchDeceased} disabled={loading}>
-              {loading ? <AnimatedLoader2 size={18} /> : <RefreshCw size={18} />}
-              Refresh
+              {loading ? <AnimatedLoader2 size={18} /> : <RefreshCw size={18} />}Refresh
             </PrimaryButton>
-
-            <ReportButton
-              onClick={() => setShowReportModal(true)}
-              disabled={loading || filteredDeceasedRecords.length === 0}
-            >
-              <FileText size={18} />
-              Export - Exel
+            <ReportButton onClick={() => setShowExportModal(true)} disabled={loading || filteredDeceasedRecords.length === 0}>
+              <FileText size={18} />Export
             </ReportButton>
-
             <PrimaryButton primary onClick={handleNewRegistrationClick}>
-              <PlusCircle size={18} />
-              Add New
+              <PlusCircle size={18} />Add New
             </PrimaryButton>
           </div>
         </HeaderSection>
 
-        {/* Status Summary */}
-
-        {/* Pagination - MOVED TO TOP */}
         {!loading && !error && filteredDeceasedRecords.length > 0 && (
           <Paginator>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: '600', color: Colors.darkGray }}>
-                Page {currentPage} of {totalPages} • Showing {indexOfFirstRecord + 1}-
-                {Math.min(indexOfLastRecord, filteredDeceasedRecords.length)} of{' '}
-                {filteredDeceasedRecords.length} records
+                Page {currentPage} of {totalPages} • Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredDeceasedRecords.length)} of {filteredDeceasedRecords.length} records
               </span>
               <ItemsPerPageSelect value={itemsPerPage} onChange={handleItemsPerPageChange}>
                 <option value={5}>5 per page</option>
@@ -1501,132 +1195,67 @@ const AllDeceasedPage = () => {
                 <option value={50}>50 per page</option>
               </ItemsPerPageSelect>
             </div>
-
             <PaginationControls>
-              <PaginationButton onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
-                First
-              </PaginationButton>
-              <PaginationButton
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft size={14} />
-              </PaginationButton>
-
+              <PaginationButton onClick={() => handlePageChange(1)} disabled={currentPage === 1}>First</PaginationButton>
+              <PaginationButton onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}><ChevronLeft size={14} /></PaginationButton>
               {generatePaginationButtons()}
-
-              <PaginationButton
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight size={14} />
-              </PaginationButton>
-              <PaginationButton
-                onClick={() => handlePageChange(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                Last
-              </PaginationButton>
+              <PaginationButton onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}><ChevronRight size={14} /></PaginationButton>
+              <PaginationButton onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages}>Last</PaginationButton>
             </PaginationControls>
           </Paginator>
         )}
 
-        {/* Mobile Filter Toggle */}
         <MobileFilterToggle onClick={toggleFilters}>
-          <span>Filters</span>
-          <Filter size={18} />
+          <span>Filters</span><Filter size={18} />
         </MobileFilterToggle>
 
-        {/* Filters */}
         <FilterContainer showFilters={showFilters}>
           <FilterGroup>
-            <FilterLabel>
-              <Search size={16} />
-              Search:
-            </FilterLabel>
-            <SearchInput>
-              <Search size={16} />
-              <input
-                type="text"
-                placeholder="Name or Admission No..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </SearchInput>
-          </FilterGroup>
-
-          <FilterGroup>
-            <FilterLabel>
-              <Microscope size={16} />
-              Autopsy:
-            </FilterLabel>
+            <FilterLabel><Microscope size={16} />Autopsy:</FilterLabel>
             <FilterSelect value={autopsyFilter} onChange={(e) => setAutopsyFilter(e.target.value)}>
               <option value="all">All</option>
               <option value="performed">Performed</option>
               <option value="notPerformed">Not Performed</option>
             </FilterSelect>
           </FilterGroup>
-
           <FilterGroup>
-            <FilterLabel>
-              <Calendar size={16} />
-              Year:
-            </FilterLabel>
+            <FilterLabel><Calendar size={16} />Year:</FilterLabel>
             <YearFilterInput>
               <div className="year-select-container">
-                <input
-                  type="text"
-                  placeholder="YYYY"
-                  value={yearFilter === 'all' ? '' : yearFilter}
-                  onChange={(e) => handleYearChange(e.target.value)}
-                  maxLength={4}
-                />
+                <input type="text" placeholder="YYYY" value={yearFilter === 'all' ? '' : yearFilter} onChange={(e) => handleYearChange(e.target.value)} maxLength={4} />
                 <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
                   <option value="all">All Years</option>
-                  {uniqueYears.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
+                  {uniqueYears.map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
               </div>
             </YearFilterInput>
           </FilterGroup>
-
           <FilterGroup>
-            <PrimaryButton
-              onClick={clearAllFilters}
-              style={{ fontSize: '0.8rem', padding: '0.5rem 0.8rem' }}
-            >
-              Clear Filters
-            </PrimaryButton>
+            <FilterLabel><AlertTriangle size={16} />Status:</FilterLabel>
+            <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="received">Received</option>
+              <option value="underCare">Under Care</option>
+              <option value="ready">Ready</option>
+              <option value="completed">Completed</option>
+            </FilterSelect>
+          </FilterGroup>
+          <FilterGroup>
+            <PrimaryButton onClick={clearAllFilters} style={{ fontSize: '0.8rem', padding: '0.5rem 0.8rem' }}>Clear Filters</PrimaryButton>
           </FilterGroup>
         </FilterContainer>
 
-        {/* Results Count */}
         {!loading && (
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-            }}
-          >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: '600', color: Colors.darkGray }}>
               Showing {filteredDeceasedRecords.length} of {allDeceasedRecords.length} records
             </span>
             {filteredDeceasedRecords.length === 0 && allDeceasedRecords.length > 0 && (
-              <WarningMessage>
-                <AlertTriangle size={18} />
-                No records match your current filters
-              </WarningMessage>
+              <WarningMessage><AlertTriangle size={18} />No records match your current filters</WarningMessage>
             )}
           </div>
         )}
 
-        {/* Loading State */}
         {loading && (
           <CenteredContainer>
             <AnimatedLoader2 size={40} color={Colors.accentBlue} />
@@ -1634,36 +1263,25 @@ const AllDeceasedPage = () => {
           </CenteredContainer>
         )}
 
-        {/* Error State */}
         {error && !loading && (
           <CenteredContainer>
             <AlertTriangle size={40} color={Colors.dangerRed} />
             <div>{error}</div>
-            <PrimaryButton onClick={fetchDeceased}>
-              <RefreshCw size={18} />
-              Try Again
-            </PrimaryButton>
+            <PrimaryButton onClick={fetchDeceased}><RefreshCw size={18} />Try Again</PrimaryButton>
           </CenteredContainer>
         )}
 
-        {/* Success State */}
         {!loading && !error && (
           <>
-            {/* Desktop Table View */}
             {!isMobile && filteredDeceasedRecords.length > 0 && (
               <StyledCard>
                 <TableContainer>
                   <StyledTable>
                     <thead>
                       <tr>
-                        <th>Full Name</th>
-                        <th>Admission No</th>
-                        <th>Date of Death</th>
-                        <th>Created</th>
-                        <th className="text-center">Status</th>
-                        <th className="text-center">Next of Kin</th>
-                        <th className="text-center">Autopsy</th>
-                        <th className="text-center">Actions</th>
+                        <th>Full Name</th><th>Admission No</th><th>Date of Death</th><th>Created</th>
+                        <th className="text-center">Status</th><th className="text-center">Next of Kin</th>
+                        <th className="text-center">Autopsy</th><th className="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>{currentRecords.map(renderTableRow)}</tbody>
@@ -1671,13 +1289,7 @@ const AllDeceasedPage = () => {
                 </TableContainer>
               </StyledCard>
             )}
-
-            {/* Mobile Card View */}
-            {isMobile && filteredDeceasedRecords.length > 0 && (
-              <div>{currentRecords.map(renderMobileCard)}</div>
-            )}
-
-            {/* No Results */}
+            {isMobile && filteredDeceasedRecords.length > 0 && <div>{currentRecords.map(renderMobileCard)}</div>}
             {!loading && filteredDeceasedRecords.length === 0 && allDeceasedRecords.length > 0 && (
               <CenteredContainer>
                 <ClipboardList size={40} color={Colors.mediumGray} />
@@ -1685,23 +1297,28 @@ const AllDeceasedPage = () => {
                 <PrimaryButton onClick={clearAllFilters}>Clear Filters</PrimaryButton>
               </CenteredContainer>
             )}
-
-            {/* Empty State */}
             {!loading && allDeceasedRecords.length === 0 && (
               <CenteredContainer>
                 <Users size={40} color={Colors.mediumGray} />
                 <div>No deceased records found</div>
-                <PrimaryButton primary onClick={handleNewRegistrationClick}>
-                  <PlusCircle size={18} />
-                  Add First Record
-                </PrimaryButton>
+                <PrimaryButton primary onClick={handleNewRegistrationClick}><PlusCircle size={18} />Add First Record</PrimaryButton>
               </CenteredContainer>
             )}
           </>
         )}
 
-        {/* Report Modal */}
-        {showReportModal && <ReportModal />}
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          onExport={handleExport}
+          isExporting={exporting}
+          filters={{
+            status: statusFilter,
+            autopsy: autopsyFilter,
+            year: yearFilter,
+            search: searchTerm,
+          }}
+        />
       </ContentWrapper>
     </AppContainer>
   );

@@ -5,7 +5,8 @@ import {
   ListGroup, ListGroupItem, Alert, Carousel, InputGroup,
   Table, Container
 } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../../api/client';
+import { ENDPOINTS } from '../../api/endpoints';
 import {
   Search, Plus, Edit, Trash2, Eye, Package,
   AlertTriangle, Filter, Download, Upload, Box,
@@ -16,11 +17,6 @@ import {
   Clock, PersonStanding, Save, Users as UsersIcon,
   FileSpreadsheet, Grid3x3, List
 } from 'lucide-react';
-
-const API_BASE_URL = "http://localhost:5000";
-const API_URL = 'http://localhost:5000/api/v1/restpoint/coffins';
-const EXPORT_URL = 'http://localhost:5000/api/v1/restpoint/coffins/export/excel';
-const ASSIGNMENTS_URL = 'http://localhost:5000/api/v1/restpoint/assignments/recent';
 
 // Define custom styles
 const styles = `
@@ -648,7 +644,7 @@ function CoffinInventory() {
   const fetchCoffins = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(API_URL, { timeout: 10000 });
+      const response = await api.get(ENDPOINTS.COFFINS.LIST, { timeout: 10000 });
       
       if (response.data.success) {
         const processedCoffins = (response.data.data || []).map(coffin => {
@@ -692,7 +688,7 @@ function CoffinInventory() {
   const fetchRecentAssignments = useCallback(async () => {
     setAssignmentsLoading(true);
     try {
-      const response = await axios.get(ASSIGNMENTS_URL);
+      const response = await api.get(ENDPOINTS.COFFINS.ASSIGNMENTS);
       if (response.data.success) {
         setRecentAssignments(response.data.data || []);
       } else {
@@ -711,8 +707,9 @@ function CoffinInventory() {
   const handleExportToExcel = async () => {
     setExporting(true);
     try {
-      const response = await fetch(EXPORT_URL);
-      if (!response.ok) throw new Error('Export failed');
+      const response = await api.get(ENDPOINTS.COFFINS.EXPORT, {
+        responseType: 'blob'
+      });
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -761,7 +758,7 @@ function CoffinInventory() {
 
   const confirmDelete = async () => {
     try {
-      const response = await axios.delete(`${API_URL}/${selectedCoffin.coffin_id}`);
+      const response = await api.delete(ENDPOINTS.COFFINS.DELETE(selectedCoffin.coffin_id));
       if (response.data.success) {
         setCoffins(coffins.filter(c => c.coffin_id !== selectedCoffin.coffin_id));
         showToast('Coffin deleted successfully!', 'success');
@@ -793,7 +790,7 @@ function CoffinInventory() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(`${API_URL}/${selectedCoffin.coffin_id}`, editFormData);
+      const response = await api.put(ENDPOINTS.COFFINS.UPDATE(selectedCoffin.coffin_id), editFormData);
       if (response.data.success) {
         setCoffins(coffins.map(c => 
           c.coffin_id === selectedCoffin.coffin_id 

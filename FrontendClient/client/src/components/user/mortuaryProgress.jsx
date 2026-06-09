@@ -164,13 +164,44 @@ const ErrorContainer = styled.div`
   text-align: center;
 `;
 
-const MortuaryProgress = ({ apiBaseUrl = 'http://localhost:5000/api/v1/restpoint' }) => {
-  const { id: deceasedId } = useParams();
+const MortuaryProgress = ({ 
+  daysInMortuary: propDaysInMortuary, 
+  dispatchDate: propDispatchDate, 
+  isOverdue: propIsOverdue,
+  deceasedData: propDeceasedData,
+  apiBaseUrl 
+}) => {
+  const { id: deceasedIdFromParams } = useParams();
   const [deceasedData, setDeceasedData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Centralized API base URL
+  const API_BASE_URL = apiBaseUrl || 'http://localhost:8000/api/v1/restpoint';
+  
+  // Helper to get tenant slug
+  const getTenantSlug = () => {
+    return localStorage.getItem('tenantSlug') || 
+           localStorage.getItem('tenant_slug') ||
+           (() => {
+             try {
+               const user = JSON.parse(localStorage.getItem('user') || '{}');
+               return user.tenantSlug || user.tenant?.slug || 'default';
+             } catch {
+               return 'default';
+             }
+           })();
+  };
+
   const fetchDeceasedData = async () => {
+    // Use prop data if available, otherwise fetch from API
+    if (propDeceasedData) {
+      setDeceasedData(propDeceasedData);
+      setIsLoading(false);
+      return;
+    }
+
+    const deceasedId = deceasedIdFromParams;
     if (!deceasedId) {
       setError('No deceased ID provided');
       setIsLoading(false);
@@ -181,7 +212,12 @@ const MortuaryProgress = ({ apiBaseUrl = 'http://localhost:5000/api/v1/restpoint
     setError(null);
     
     try {
-      const response = await axios.get(`${apiBaseUrl}/deceased-id?id=${deceasedId}`);
+      const tenantSlug = getTenantSlug();
+      const response = await axios.get(`${API_BASE_URL}/deceased/deceased-id?id=${deceasedId}`, {
+        headers: {
+          'x-tenant-slug': tenantSlug,
+        },
+      });
       
       if (response.data && response.data.data) {
         setDeceasedData(response.data.data);
@@ -198,15 +234,20 @@ const MortuaryProgress = ({ apiBaseUrl = 'http://localhost:5000/api/v1/restpoint
 
   useEffect(() => {
     fetchDeceasedData();
-  }, [deceasedId]);
+  }, [deceasedIdFromParams]);
 
   const getDaysInMortuary = (startDate) => {
     if (!startDate) return 0;
-    const start = new Date(startDate);
-    const now = new Date();
-    const diffTime = Math.abs(now - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    try {
+      const start = new Date(startDate);
+      const now = new Date();
+      const diffTime = Math.abs(now - start);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    } catch (error) {
+      console.error('Error calculating days in mortuary:', error);
+      return 0;
+    }
   };
 
   if (isLoading) {
@@ -231,7 +272,10 @@ const MortuaryProgress = ({ apiBaseUrl = 'http://localhost:5000/api/v1/restpoint
     );
   }
 
-  if (!deceasedData) {
+  // Use props if available, otherwise use fetched data
+  const data = propDeceasedData || deceasedData;
+  
+  if (!data && !propDaysInMortuary) {
     return (
       <ProgressContainer>
         <ErrorContainer>
@@ -241,13 +285,14 @@ const MortuaryProgress = ({ apiBaseUrl = 'http://localhost:5000/api/v1/restpoint
     );
   }
 
-  // Extract data from API response
-  const daysInMortuary = deceasedData.financial_details?.days_spent || 
-                        getDaysInMortuary(deceasedData.date_admitted);
-  const dispatchDate = deceasedData.dispatch_date;
-  const status = deceasedData.status || 'Active';
+  // Extract data - use props first, then fallback to calculated/fetched data
+  const daysInMortuary = propDaysInMortuary !== undefined 
+    ? propDaysInMortuary 
+    : (data?.financial_details?.days_spent || getDaysInMortuary(data?.date_admitted) || 0);
+  const dispatchDate = propDispatchDate !== undefined ? propDispatchDate : data?.dispatch_date;
+  const status = data?.status || 'Active';
   const maxDays = 30;
-  const isOverdue = daysInMortuary > maxDays;
+  const isOverdue = propIsOverdue !== undefined ? propIsOverdue : daysInMortuary > maxDays;
   const percentage = Math.min(100, (daysInMortuary / maxDays) * 100);
 
   const formatDate = (dateString) => {
@@ -335,10 +380,10 @@ const MortuaryProgress = ({ apiBaseUrl = 'http://localhost:5000/api/v1/restpoint
       )}
 
       <AdditionalInfo>
-        <div><strong>Admission No:</strong> {deceasedData.admission_number || 'N/A'}</div>
-        <div><strong>Location:</strong> {deceasedData.location || 'N/A'}</div>
-        {deceasedData.financial_details && (
-          <div><strong>Balance:</strong> KSh {deceasedData.financial_details.balance?.toLocaleString() || '0'}</div>
+        <div><strong>Admission No:</strong> {data?.admission_number || 'N/A'}</div>
+        <div><strong>Location:</strong> {data?.location || 'N/A'}</div>
+        {data?.financial_details && (
+          <div><strong>Balance:</strong> KSh {data.financial_details.balance?.toLocaleString() || '0'}</div>
         )}
       </AdditionalInfo>
     </ProgressContainer>

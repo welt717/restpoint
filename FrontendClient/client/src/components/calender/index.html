@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rest Point Calendar Manager</title>
+    
+    <!-- FullCalendar CSS -->
+    <link href='resources/calender/css/fullcalendar.min.css' rel='stylesheet' />
+    <link href='resources/calender/css/fullcalendar.print.min.css' rel='stylesheet' media='print' />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Datepicker CSS -->
+    <link rel="stylesheet" href="resources/datepicker/jquery.timepicker.css">
+    <link rel="stylesheet" href="resources/datepicker/datepicker/css/classic.css"/>
+    <link rel="stylesheet" href="resources/datepicker/datepicker/css/classic.date.css"/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css" />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <i class="fas fa-dove"></i>
+                    </div>
+                    <h1>Rest Point Calendar</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="notificationsBtn" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge">3</span>
+                    </button>
+                    <button class="add-event-btn" id="addEventBtn">
+                        <i class="fas fa-plus"></i>
+                        <span>New Entry</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="app-body">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h3>Filters</h3>
+                    <button class="sidebar-close" id="sidebarClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="sidebar-content">
+                    <!-- Entry Type Filters -->
+                    <div class="filter-section">
+                        <h4>Entry Types</h4>
+                        <div class="filter-list">
+                            <label class="filter-item">
+                                <input type="checkbox" checked data-filter="interment">
+                                <span class="filter-color interment"></span>
+                                <span class="filter-label">Interment</span>
+                                <span class="filter-count" id="intermentCount">0</span>
+                            </label>
+                            <label class="filter-item">
+                                <input type="checkbox" checked data-filter="exhumation">
+                                <span class="filter-color exhumation"></span>
+                                <span class="filter-label">Exhumation</span>
+                                <span class="filter-count" id="exhumationCount">0</span>
+                            </label>
+                            <label class="filter-item">
+                                <input type="checkbox" checked data-filter="memorial">
+                                <span class="filter-color memorial"></span>
+                                <span class="filter-label">Memorial Service</span>
+                                <span class="filter-count" id="memorialCount">0</span>
+                            </label>
+                            <label class="filter-item">
+                                <input type="checkbox" checked data-filter="maintenance">
+                                <span class="filter-color maintenance"></span>
+                                <span class="filter-label">Maintenance</span>
+                                <span class="filter-count" id="maintenanceCount">0</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="stats-section">
+                        <h4>Quick Stats</h4>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <span class="stat-value" id="totalEntries">0</span>
+                                <span class="stat-label">Total Entries</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-value" id="todayEntries">0</span>
+                                <span class="stat-label">Today</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-value" id="weekEntries">0</span>
+                                <span class="stat-label">This Week</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upcoming Entries -->
+                    <div class="upcoming-section">
+                        <h4>Upcoming</h4>
+                        <div class="upcoming-list" id="upcomingList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Calendar Navigation -->
+                <div class="calendar-nav">
+                    <div class="nav-left">
+                        <button class="nav-btn" id="prevBtn" title="Previous">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="nav-btn" id="nextBtn" title="Next">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button class="today-btn" id="todayBtn">Today</button>
+                    </div>
+                    <h2 class="calendar-title" id="calendarTitle"></h2>
+                    <div class="nav-right">
+                        <div class="view-switcher">
+                            <button class="view-btn" data-view="month">Month</button>
+                            <button class="view-btn active" data-view="agendaWeek">Week</button>
+                            <button class="view-btn" data-view="agendaDay">Day</button>
+                            <button class="view-btn" data-view="listWeek">List</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Calendar Container -->
+                <div class="calendar-wrapper">
+                    <div id="calendar"></div>
+                </div>
+            </main>
+        </div>
+        
+        <!-- Mobile Bottom Navigation -->
+        <nav class="mobile-nav" id="mobileNav">
+            <button class="nav-item active" data-action="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Calendar</span>
+            </button>
+            <button class="nav-item" data-action="add">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add</span>
+            </button>
+            <button class="nav-item" data-action="list">
+                <i class="fas fa-list"></i>
+                <span>List</span>
+            </button>
+            <button class="nav-item" data-action="settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+        </nav>
+    </div>
+    
+    <!-- Event Modal -->
+    <div class="modal-overlay" id="eventModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">New Rest Point Entry</h2>
+                <button class="modal-close" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="eventForm" class="modal-body">
+                <div class="form-group">
+                    <label for="eventTitle">
+                        <i class="fas fa-user"></i>
+                        Full Name <span class="required">*</span>
+                    </label>
+                    <input type="text" id="eventTitle" class="form-control" placeholder="Enter full name" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventReference">
+                            <i class="fas fa-hashtag"></i>
+                            Reference Number
+                        </label>
+                        <input type="text" id="eventReference" class="form-control" placeholder="Auto-generated">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventType">
+                            <i class="fas fa-tag"></i>
+                            Entry Type <span class="required">*</span>
+                        </label>
+                        <select id="eventType" class="form-control" required>
+                            <option value="interment">Interment</option>
+                            <option value="exhumation">Exhumation</option>
+                            <option value="memorial">Memorial Service</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="startDate">
+                            <i class="fas fa-calendar-day"></i>
+                            Arrival Date <span class="required">*</span>
+                        </label>
+                        <input type="text" id="startDate" class="form-control" placeholder="Select date">
+                    </div>
+                    <div class="form-group">
+                        <label for="startTime">
+                            <i class="fas fa-clock"></i>
+                            Arrival Time <span class="required">*</span>
+                        </label>
+                        <input type="text" id="startTime" class="form-control" placeholder="Select time">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="endDate">
+                            <i class="fas fa-calendar-check"></i>
+                            Departure Date
+                        </label>
+                        <input type="text" id="endDate" class="form-control" placeholder="Select date">
+                    </div>
+                    <div class="form-group">
+                        <label for="endTime">
+                            <i class="fas fa-hourglass-end"></i>
+                            Departure Time
+                        </label>
+                        <input type="text" id="endTime" class="form-control" placeholder="Select time">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="eventLocation">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Location / Plot Number
+                    </label>
+                    <input type="text" id="eventLocation" class="form-control" placeholder="e.g., Section A, Plot 12">
+                </div>
+                
+                <div class="form-group">
+                    <label for="eventDescription">
+                        <i class="fas fa-align-left"></i>
+                        Additional Notes
+                    </label>
+                    <textarea id="eventDescription" class="form-control" rows="3" placeholder="Any additional information..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventStatus">
+                            <i class="fas fa-tasks"></i>
+                            Status
+                        </label>
+                        <select id="eventStatus" class="form-control">
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="in-progress">In Progress</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventAssigned">
+                            <i class="fas fa-user-tie"></i>
+                            Assigned To
+                        </label>
+                        <input type="text" id="eventAssigned" class="form-control" placeholder="Optional">
+                    </div>
+                </div>
+            </form>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEventBtn">
+                    <i class="fas fa-save"></i>
+                    Save Entry
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Event Details Modal -->
+    <div class="modal-overlay" id="eventDetailsModal">
+        <div class="modal event-details-modal">
+            <div class="modal-header">
+                <div class="event-type-badge" id="eventTypeBadge"></div>
+                <h2 class="modal-title" id="eventDetailsTitle"></h2>
+                <button class="modal-close" id="closeDetailsModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row">
+                    <div class="detail-item">
+                        <i class="fas fa-hashtag"></i>
+                        <span class="detail-label">Reference:</span>
+                        <span class="detail-value" id="eventDetailsRef"></span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-item">
+                        <i class="fas fa-tag"></i>
+                        <span class="detail-label">Type:</span>
+                        <span class="detail-value" id="eventDetailsType"></span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="detail-label">Arrival:</span>
+                        <span class="detail-value" id="eventDetailsDate"></span>
+                    </div>
+                </div>
+                <div class="detail-row" id="departureRow" style="display:none;">
+                    <div class="detail-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span class="detail-label">Departure:</span>
+                        <span class="detail-value" id="eventDetailsDeparture"></span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span class="detail-label">Location:</span>
+                        <span class="detail-value" id="eventDetailsLocation"></span>
+                    </div>
+                </div>
+                <div class="detail-row" id="notesRow" style="display:none;">
+                    <div class="detail-item">
+                        <i class="fas fa-align-left"></i>
+                        <span class="detail-label">Notes:</span>
+                        <span class="detail-value" id="eventDetailsNotes"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="deleteEventBtn">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                </button>
+                <button type="button" class="btn btn-primary" id="editEventBtn">
+                    <i class="fas fa-edit"></i>
+                    Edit
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal settings-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" id="closeSettingsModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Display Preferences</h4>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Default View</span>
+                            <span class="setting-desc">Choose your preferred calendar view</span>
+                        </div>
+                        <select id="defaultView" class="form-control setting-select">
+                            <option value="month">Month</option>
+                            <option value="agendaWeek" selected>Week</option>
+                            <option value="agendaDay">Day</option>
+                            <option value="listWeek">List</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Show Weekends</span>
+                            <span class="setting-desc">Display Saturday and Sunday</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showWeekends" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">24-Hour Time Format</span>
+                            <span class="setting-desc">Use 24-hour clock instead of AM/PM</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="timeFormat24">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Notifications</h4>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Daily Reminders</span>
+                            <span class="setting-desc">Get notified of today's entries</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dailyReminders" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Data Management</h4>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Export Data</span>
+                            <span class="setting-desc">Download all entries as JSON</span>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" id="exportDataBtn">
+                            <i class="fas fa-download"></i>
+                            Export
+                        </button>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Import Data</span>
+                            <span class="setting-desc">Import entries from JSON file</span>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" id="importDataBtn">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </button>
+                        <input type="file" id="importFile" accept=".json" style="display:none;">
+                    </div>
+                    <div class="setting-item danger">
+                        <div class="setting-info">
+                            <span class="setting-label">Clear All Data</span>
+                            <span class="setting-desc">Permanently delete all entries</span>
+                        </div>
+                        <button class="btn btn-danger btn-sm" id="clearDataBtn">
+                            <i class="fas fa-trash-alt"></i>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="resetSettingsBtn">Reset to Defaults</button>
+                <button type="button" class="btn btn-primary" id="saveSettingsBtn">
+                    <i class="fas fa-check"></i>
+                    Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Hidden iframe for data export -->
+    <iframe id="downloadFrame" style="display:none;"></iframe>
+    
+    <!-- Scripts -->
+    <script src='resources/calender/js/moment.min.js'></script>
+    <script src='resources/calender/js/jquery.min.js'></script>
+    <script src='resources/calender/js/fullcalendar.min.js'></script>
+    <script src="resources/datepicker/jquery.timepicker.js"></script>
+    <script src="resources/datepicker/datepicker/js/picker.js"></script>
+    <script src="resources/datepicker/datepicker/js/picker.date.js"></script>
+    <script src="resources/datepicker/datepicker/js/legacy.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+/* Enhanced Document Editor Styles */
+
+.enhanced-editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f5f5f5;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.editor-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.zoom-indicator {
+  min-width: 50px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background-color: #f0f0f0;
+  border-color: #999;
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editor-content {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.editor-toolbar {
+  width: 80px;
+  background-color: #fafafa;
+  border-right: 1px solid #e0e0e0;
+  padding: 12px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-group h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tool-btn {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+
+.tool-btn:hover:not(:disabled) {
+  background-color: #e8f4f8;
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.tool-btn.active {
+  background-color: #0066cc;
+  color: white;
+  border-color: #0066cc;
+}
+
+.tool-btn.danger:hover {
+  background-color: #ffebee;
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+.tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.color-picker {
+  width: 100%;
+  height: 32px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.size-slider {
+  width: 100%;
+}
+
+/* Canvas Area */
+.canvas-area {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f5f5 25%, transparent 25%, transparent 75%, #f5f5f5 75%, #f5f5f5),
+              linear-gradient(135deg, #f5f5f5 25%, transparent 25%, transparent 75%, #f5f5f5 75%, #f5f5f5);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  background-color: #fff;
+  overflow: auto;
+}
+
+.fabric-canvas {
+  background-color: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  cursor: crosshair;
+}
+
+.fabric-canvas.selecting {
+  cursor: pointer;
+}
+
+/* Fields Panel */
+.fields-panel {
+  width: 280px;
+  background-color: white;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.fields-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #fafafa;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.fields-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.fields-header span {
+  color: #999;
+  font-size: 12px;
+}
+
+.fields-content {
+  flex: 1;
+  padding: 12px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.field-item input,
+.field-item textarea,
+.field-item select {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: none;
+}
+
+.field-item input:focus,
+.field-item textarea:focus,
+.field-item select:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.no-fields {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+.w-full {
+  width: 100%;
+}
+
+/* Properties Panel */
+.properties-panel {
+  width: 280px;
+  background-color: white;
+  border-left: 1px solid #e0e0e0;
+  padding: 16px;
+  overflow-y: auto;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.properties-panel h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.property-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.property-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.property-item input[type="color"],
+.property-item input[type="range"] {
+  width: 100%;
+}
+
+.property-item input[type="number"] {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background-color: #0066cc;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.btn-secondary {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #e8e8e8;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Scrollbar Styles */
+.editor-toolbar::-webkit-scrollbar,
+.fields-content::-webkit-scrollbar,
+.canvas-area::-webkit-scrollbar,
+.properties-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.editor-toolbar::-webkit-scrollbar-track,
+.fields-content::-webkit-scrollbar-track,
+.canvas-area::-webkit-scrollbar-track,
+.properties-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-toolbar::-webkit-scrollbar-thumb,
+.fields-content::-webkit-scrollbar-thumb,
+.canvas-area::-webkit-scrollbar-thumb,
+.properties-panel::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 4px;
+}
+
+.editor-toolbar::-webkit-scrollbar-thumb:hover,
+.fields-content::-webkit-scrollbar-thumb:hover,
+.canvas-area::-webkit-scrollbar-thumb:hover,
+.properties-panel::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .properties-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .enhanced-editor-container {
+    height: auto;
+  }
+
+  .editor-content {
+    flex-direction: column;
+  }
+
+  .editor-toolbar,
+  .fields-panel,
+  .properties-panel {
+    width: 100%;
+    border: none;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .canvas-area {
+    min-height: 400px;
+  }
+}

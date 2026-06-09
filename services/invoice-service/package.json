@@ -1,0 +1,28 @@
+{
+  "name": "@montezuma/invoice-service",
+  "version": "1.0.0",
+  "description": "Montezuma Mortuary SaaS invoice-service",
+  "main": "server.ts",
+  "scripts": {
+    "start": "npx ts-node server.ts",
+"dev": "nodemon --exec npx ts-node server.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "cors": "^2.8.5",
+    "helmet": "^8.1.0",
+    "dotenv": "^17.2.0",
+    "mysql2": "^3.15.2",
+    "bcrypt": "^6.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "winston": "^3.18.3",
+    "ioredis": "^5.8.2",
+    "bullmq": "^5.61.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import {
   User,
   Calendar,
@@ -27,13 +27,95 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Animations
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const slideRight = keyframes`
+  from {
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+`;
+
+// API Gateway URL
+const API_GATEWAY_URL =  'http://localhost:8000';
+const API_BASE_URL = `${API_GATEWAY_URL}/api/v1/restpoint/deceased`;
+
+
+
+// Helper function to get tenant slug
+const getTenantSlug = () => {
+  return localStorage.getItem('tenantSlug') || 
+         localStorage.getItem('tenant_slug') ||
+         (() => {
+           try {
+             const user = JSON.parse(localStorage.getItem('user') || '{}');
+             return user.tenantSlug || user.tenant?.slug || 'default';
+           } catch {
+             return 'default';
+           }
+         })();
+};
+
+// Create axios instance with default headers
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to add tenant slug header
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    const tenantSlug = getTenantSlug();
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (tenantSlug && tenantSlug !== 'default') {
+      config.headers['x-tenant-slug'] = tenantSlug;
+    }
+    
+    console.log('📡 DeceasedInfoSection API Request:', {
+      url: config.url,
+      method: config.method,
+      tenantSlug,
+    });
+    
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // --- Sleek Styled Components with Larger Boxes ---
 const Container = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 1.5rem;
+  padding: 1.75rem;
   border: 1px solid #eef2f6;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  animation: ${fadeIn} 0.5s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border-color: #d9e2ef;
+  }
 `;
 
 const Header = styled.div`
@@ -43,6 +125,8 @@ const Header = styled.div`
   margin-bottom: 2rem;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid #f1f5f9;
+  flex-wrap: wrap;
+  gap: 1rem;
 `;
 
 const Title = styled.h3`
@@ -53,6 +137,7 @@ const Title = styled.h3`
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 `;
 
 const Badge = styled.span`
@@ -62,7 +147,6 @@ const Badge = styled.span`
   border-radius: 30px;
   font-size: 0.8rem;
   font-weight: 500;
-  margin-left: 0.5rem;
   letter-spacing: 0.3px;
 `;
 
@@ -70,6 +154,7 @@ const Actions = styled.div`
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  flex-wrap: wrap;
 `;
 
 const Button = styled.button`
@@ -145,17 +230,25 @@ const DataGrid = styled.div`
 `;
 
 const DataGroup = styled.div`
-  background: #f8fafc;
-  border-radius: 16px;
-  padding: 1.25rem;
-  border: 1px solid #eef2f6;
-  transition: all 0.2s ease;
-  min-height: 180px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid #e9edf2;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 200px;
+  animation: ${slideRight} 0.5s ease-out;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 
   &:hover {
-    background: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-    border-color: #d9e2ef;
+    background: linear-gradient(135deg, white 0%, #f8fafc 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 768px) {
+    padding: 1.25rem;
+    min-height: auto;
   }
 `;
 
@@ -377,7 +470,7 @@ const fieldGroups = [
     color: '#8b5cf6',
     fields: [
       { key: 'status', label: 'Current Status', bold: true },
-      { key: 'registered_by', label: 'Registered By' },
+      { key: 'created_by', label: 'Registered By' },
     ],
   },
   {
@@ -422,35 +515,41 @@ const formFields = [
         name: 'status',
         label: 'Status',
         type: 'select',
-        options: ['Registered', 'Dispatched', 'Pending', 'Received'],
+        options: ['active', 'completed', 'pending', 'dispatched'],
       },
     ],
   },
 ];
 
 // --- Main Component ---
-const API_BASE_URL = 'http://localhost:5000/api/v1/restpoint';
-
-const DeceasedInfoSection = ({ onUpdate }) => {
-  const { id } = useParams();
+const DeceasedInfoSection = ({ deceasedId: propDeceasedId, deceased: propDeceased, ageInfo, onUpdate }) => {
+  const { id: paramId } = useParams();
+  const deceasedId = propDeceasedId || paramId;
+  
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState(null);
   const [originalData, setOriginalData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchDeceasedData = useCallback(async () => {
-    if (!id) {
+    if (!deceasedId) {
       setIsLoading(false);
-      toast.error('No deceased ID provided');
+      setError('No deceased ID provided');
       return;
     }
 
     setIsLoading(true);
+    setError(null);mor
+    
     try {
-      const response = await axios.get(`${API_BASE_URL}/deceased-id?id=${id}`);
-      const deceasedData = response.data?.data;
+      // Use the correct endpoint with the ID in the path
+      const response = await apiClient.get(`/deceased-id/${deceasedId}`);
+      console.log('📦 DeceasedInfoSection API Response:', response.data);
+      
+      const deceasedData = response.data?.data || response.data;
 
-      if (deceasedData) {
+      if (deceasedData && Object.keys(deceasedData).length > 0) {
         const cleanedData = {
           ...deceasedData,
           date_of_birth: deceasedData.date_of_birth
@@ -469,21 +568,41 @@ const DeceasedInfoSection = ({ onUpdate }) => {
         setFormData(cleanedData);
         setOriginalData(cleanedData);
       } else {
+        setError('No data found for this deceased record');
         setFormData(null);
         setOriginalData(null);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to load deceased information';
+      setError(errorMessage);
+      toast.error(errorMessage);
       setFormData(null);
       setOriginalData(null);
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [deceasedId]);
 
   useEffect(() => {
-    fetchDeceasedData();
-  }, [fetchDeceasedData]);
+    if (propDeceased) {
+      // If data is passed as prop, use it directly
+      const cleanedData = {
+        ...propDeceased,
+        date_of_birth: propDeceased.date_of_birth
+          ? new Date(propDeceased.date_of_birth).toISOString().split('T')[0]
+          : '',
+        date_of_death: propDeceased.date_of_death
+          ? new Date(propDeceased.date_of_death).toISOString().split('T')[0]
+          : '',
+      };
+      setFormData(cleanedData);
+      setOriginalData(cleanedData);
+      setIsLoading(false);
+    } else {
+      fetchDeceasedData();
+    }
+  }, [propDeceased, fetchDeceasedData, deceasedId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -491,14 +610,14 @@ const DeceasedInfoSection = ({ onUpdate }) => {
   };
 
   const handleSave = async () => {
-    if (!formData || !id) {
+    if (!formData || !deceasedId) {
       toast.error('No data to save');
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await axios.put(`${API_BASE_URL}/update-deceased/${id}`, formData);
+      const response = await apiClient.put(`/update-deceased/${deceasedId}`, formData);
 
       if (response.data.success) {
         toast.success('Details updated successfully');
@@ -510,7 +629,8 @@ const DeceasedInfoSection = ({ onUpdate }) => {
       }
     } catch (error) {
       console.error('Update error:', error);
-      toast.error('Failed to update details');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update details';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -547,7 +667,7 @@ const DeceasedInfoSection = ({ onUpdate }) => {
         });
   };
 
-  const getAge = (dob, dod) => {
+  const calculateAge = (dob, dod) => {
     if (!dob || !dod) return '-';
     const birth = new Date(dob);
     const death = new Date(dod);
@@ -563,13 +683,13 @@ const DeceasedInfoSection = ({ onUpdate }) => {
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'registered':
+      case 'active':
         return '#10b981';
-      case 'dispatched':
+      case 'completed':
         return '#4361ee';
       case 'pending':
         return '#f59e0b';
-      case 'received':
+      case 'dispatched':
         return '#8b5cf6';
       default:
         return '#64748b';
@@ -594,14 +714,14 @@ const DeceasedInfoSection = ({ onUpdate }) => {
           </span>
         </Value>
       );
-    } else if (field.key === 'registered_by') {
+    } else if (field.key === 'created_by') {
       return (
         <Value bold style={{ color: value?.toLowerCase() === 'system' ? '#f43f5e' : '#10b981' }}>
-          {value}
+          {value || 'System'}
         </Value>
       );
-    } else if (field.key === 'age') {
-      value = getAge(data.date_of_birth, data.date_of_death);
+    } else if (field.key === 'age' && (!value || value === '-')) {
+      value = calculateAge(data.date_of_birth, data.date_of_death);
     }
 
     return <Value bold={field.bold}>{value}</Value>;
@@ -613,12 +733,25 @@ const DeceasedInfoSection = ({ onUpdate }) => {
         {React.createElement(section.icon, { size: 18 })}
         {section.title}
       </GroupTitle>
-      {section.fields.map((field, fieldIndex) => (
-        <DataRow key={fieldIndex}>
-          <Label>{field.label}:</Label>
-          {renderFieldValue(field, formData)}
-        </DataRow>
-      ))}
+      {section.fields.map((field, fieldIndex) => {
+        let displayValue = formData[field.key];
+        
+        // Special handling for age
+        if (field.key === 'age' && (!displayValue || displayValue === '-')) {
+          displayValue = calculateAge(formData.date_of_birth, formData.date_of_death);
+        }
+        
+        return (
+          <DataRow key={fieldIndex}>
+            <Label>{field.label}:</Label>
+            {field.key === 'age' ? (
+              <Value bold>{displayValue}</Value>
+            ) : (
+              renderFieldValue(field, formData)
+            )}
+          </DataRow>
+        );
+      })}
     </DataGroup>
   );
 
@@ -633,12 +766,16 @@ const DeceasedInfoSection = ({ onUpdate }) => {
     );
   }
 
-  if (!formData) {
+  if (error || !formData) {
     return (
       <Container>
         <NoData>
-          <Info size={32} />
-          <div style={{ marginTop: '1rem' }}>No data found for this deceased record</div>
+          <Info size={32} strokeWidth={1.5} />
+          <div style={{ marginTop: '1rem', color: '#dc2626' }}>{error || 'No data found for this deceased record'}</div>
+          <Button className="secondary" onClick={fetchDeceasedData} style={{ marginTop: '1rem' }}>
+            <RefreshCw size={16} />
+            Retry
+          </Button>
         </NoData>
       </Container>
     );
@@ -651,7 +788,7 @@ const DeceasedInfoSection = ({ onUpdate }) => {
           <Title>
             <User size={22} />
             Deceased Information
-            <Badge color="#4361ee">ID: {formData.deceased_id}</Badge>
+            <Badge color="#4361ee">ID: {formData.deceased_id || formData.id || deceasedId}</Badge>
           </Title>
 
           <Actions>
@@ -735,5 +872,8 @@ const DeceasedInfoSection = ({ onUpdate }) => {
     </>
   );
 };
+
+// Import RefreshCw for the retry button
+import { RefreshCw } from 'lucide-react';
 
 export default DeceasedInfoSection;

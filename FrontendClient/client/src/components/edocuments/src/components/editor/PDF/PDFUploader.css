@@ -1,0 +1,127 @@
+/* PDF Uploader Styling */
+
+.pdf-uploader {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-area {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #0d6efd;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e7f1ff 0%, #f0f7ff 100%);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 20px;
+}
+
+.upload-area:hover {
+  border-color: #0b5ed7;
+  background: linear-gradient(135deg, #d6e4ff 0%, #e0edff 100%);
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+}
+
+.upload-area.loading {
+  pointer-events: none;
+}
+
+.upload-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  font-size: 48px;
+  opacity: 0.8;
+}
+
+.upload-text {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #212529;
+}
+
+.upload-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.file-name {
+  margin: 0;
+  font-size: 12px;
+  color: #0d6efd;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.progress-bar {
+  width: 100%;
+  max-width: 300px;
+  height: 4px;
+  background: #dee2e6;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0d6efd, #0b5ed7);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+  box-shadow: 0 0 10px rgba(13, 110, 253, 0.3);
+}
+
+.upload-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e7f1ff;
+  border-top-color: #0d6efd;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .upload-area {
+    padding: 16px;
+  }
+
+  .upload-icon {
+    font-size: 36px;
+  }
+
+  .upload-text {
+    font-size: 14px;
+  }
+
+  .upload-hint {
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+.npmrc
+.prettierrc
+eslint.config.js
+tsconfig.json
+src
+uploads
+*.log
+logs
+coverage
+.nyc_output
+dist

@@ -1,636 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/authApi';
-import styled, { keyframes, css } from 'styled-components';
-import {
-  Shield,
-  Users,
-  Mail,
-  Lock,
-  User,
-  Eye,
-  EyeOff,
-  Clock,
-  LogOut,
-  CheckCircle,
-  AlertCircle,
-  Loader as LoaderIcon
-} from 'lucide-react';
 
-// Modern Color Palette
-const Colors = {
-  primary: '#2C3E50',
-  primaryLight: '#34495E',
-  secondary: '#000000ff',
-  accent: '#0ee945ff',
-  white: '#FFFFFF',
-  lightGray: '#F8F9FA',
-  mediumGray: '#E9ECEF',
-  darkGray: '#495057',
-  cardBg: 'rgba(255, 255, 255, 0.98)',
-  glassEffect: 'rgba(255, 255, 255, 0.25)',
-  danger: '#DC3545',
-  success: '#28A745',
-  info: '#17A2B8',
-  warning: '#FFC107',
-  gradientStart: '#667eea',
-  gradientEnd: '#764ba2',
-  textPrimary: '#2D3748',
-  textSecondary: '#718096'
+/* ═══════════════════════════════════════════════════════════════
+   REST POINT — Login Page
+   Design System: Matches Landing Page (Cinematic dark luxury)
+   ═══════════════════════════════════════════════════════════════ */
+
+const T = {
+  bg0:   '#040404',
+  bg1:   '#070707',
+  bg2:   '#0b0b0b',
+  bg3:   '#0f0f0f',
+  bg4:   '#131313',
+  line:  '#1e1e1e',
+  line2: '#282828',
+  dim:   '#333333',
+  sub:   '#555555',
+  muted: '#777777',
+  mid:   '#aaaaaa',
+  light: '#e0e0e0',
+  white: '#f8f8f8',
+  g:     '#04c800',
+  gd:    '#038b00',
+  gl:    '#09ff09',
+  ga:    'rgba(4,200,0,0.12)',
+  ga2:   'rgba(4,200,0,0.06)',
+  ga3:   'rgba(4,200,0,0.04)',
+  gs:    '0 0 30px rgba(4,200,0,0.2)',
 };
 
-// Enhanced Animations
-const fadeIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-`;
+/* ── SVG Icons ────────────────────────────────────────────────── */
+const I = {
+  eye:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  eyeOff: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
+  check:  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>,
+  arr:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>,
+  mail:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>,
+  lock:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  shield: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  cloud:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>,
+  users:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 15h-6"/></svg>,
+  log:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>,
+};
 
-const slideInFromLeft = keyframes`
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-`;
-
-const slideInFromRight = keyframes`
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-`;
-
-const pulse = keyframes`
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-`;
-
-const spin = keyframes`
-  0% { 
-    transform: rotate(0deg); 
-  }
-  100% { 
-    transform: rotate(360deg); 
-  }
-`;
-
-const float = keyframes`
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  33% {
-    transform: translateY(-10px) rotate(120deg);
-  }
-  66% {
-    transform: translateY(5px) rotate(240deg);
-  }
-`;
-
-const shimmer = keyframes`
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-`;
-
-const bounce = keyframes`
-  0%, 20%, 53%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40%, 43% {
-    transform: translateY(-15px);
-  }
-  70% {
-    transform: translateY(-7px);
-  }
-`;
-
-// Styled Components
-const LoginContainer = styled.div`
-  display: flex;
-  min-height: 100vh;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  align-items: center;
-  justify-content: center;
-  padding: 0px 0px;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.secondary} 50%, ${Colors.gradientEnd} 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-
-  @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
-    animation: ${float} 20s ease-in-out infinite;
-  }
-`;
-
-const FloatingShapes = styled.div`
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-
-  div {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    animation: ${float} 15s infinite linear;
-    
-    &:nth-child(1) {
-      width: 80px;
-      height: 80px;
-      top: 10%;
-      left: 10%;
-      animation-delay: 0s;
-    }
-    
-    &:nth-child(2) {
-      width: 120px;
-      height: 120px;
-      top: 70%;
-      left: 80%;
-      animation-delay: -5s;
-    }
-    
-    &:nth-child(3) {
-      width: 60px;
-      height: 60px;
-      top: 20%;
-      left: 85%;
-      animation-delay: -10s;
-    }
-    
-    &:nth-child(4) {
-      width: 100px;
-      height: 100px;
-      top: 80%;
-      left: 15%;
-      animation-delay: -7s;
-    }
-  }
-`;
-
-const LoginCard = styled.div`
-  background: ${Colors.cardBg};
-  backdrop-filter: blur(40px);
-  border-radius: 0px;
-  box-shadow: 
-    0 35px 70px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-  width: 100%;
-  max-width: 1200px;
-  min-height: 600px;
-  overflow: hidden;
-  animation: ${fadeIn} 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 0px solid ${Colors.glassEffect};
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  position: relative;
-  z-index: 10;
-
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
-    max-width: 500px;
-  }
-`;
-
-const LoginLeftPanel = styled.div`
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.secondary} 100%);
-  padding: 4rem 3rem;
-  color: ${Colors.white};
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  animation: ${slideInFromLeft} 1s ease-out;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-      linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
-    animation: ${shimmer} 3s ease-in-out infinite;
-  }
-
-  @media (max-width: 968px) {
-    padding: 3rem 2rem;
-    min-height: 300px;
-  }
-`;
-
-const LoginRightPanel = styled.div`
-  padding: 1rem 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  animation: ${slideInFromRight} 1s ease-out;
-
-  @media (max-width: 968px) {
-    padding: 3rem 2rem;
-  }
-`;
-
-const LoginLogo = styled.h1`
-  font-size: 3rem;
-  font-weight: 800;
-  margin: 0 0 1rem 0;
-  letter-spacing: -1px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-
-  svg {
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-    animation: ${bounce} 2s infinite;
-  }
-`;
-
-const LoginSubtitle = styled.p`
-  font-size: 1.3rem;
-  margin: 0 0 2rem 0;
-  opacity: 0.95;
-  font-weight: 400;
-  line-height: 1.6;
-`;
-
-const FeatureList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 2rem 0 0 0;
-  
-  li {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    font-size: 1.1rem;
-    font-weight: 500;
-    
-    svg {
-      width: 24px;
-      height: 24px;
-      color: ${Colors.accent};
-      flex-shrink: 0;
-    }
-  }
-`;
-
-const TimeDisplay = styled.div`
-  background: rgba(255, 255, 255, 0.2);
-  padding: 1rem 1.5rem;
-  border-radius: 20px;
-  margin-top: 2rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 1rem;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  align-self: flex-start;
-
-  svg {
-    animation: ${spin} 60s linear infinite;
-  }
-`;
-
-const LoginForm = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-`;
-
-const WelcomeSection = styled.div`
-  text-align: center;
-  margin-bottom: 1rem;
-`;
-
-const WelcomeTitle = styled.h2`
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: ${Colors.textPrimary};
-  margin: 0 0 0.5rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.secondary} 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
-
-const WelcomeText = styled.p`
-  color: ${Colors.textSecondary};
-  margin: 0;
-  font-size: 1.2rem;
-  line-height: 1.6;
-  font-weight: 500;
-`;
-
-const FormGroup = styled.div`
-  position: relative;
-  margin-bottom: 0.5rem;
-`;
-
-const FormLabel = styled.label`
-  display: block;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: ${Colors.textPrimary};
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const InputWrapper = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  transition: all 0.3s ease;
-
-  ${props => props.$hasError && css`
-    animation: ${pulse} 0.5s ease;
-  `}
-`;
-
-const FormInput = styled.input`
-  width: 100%;
-  padding: 1.25rem 1.25rem 1.25rem 3.5rem;
-  border: 2px solid ${props => props.$hasError ? Colors.danger : Colors.mediumGray};
-  border-radius: 16px;
-  font-size: 1.1rem;
-  transition: all 0.3s ease;
-  background: ${Colors.lightGray};
-  font-weight: 500;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.$hasError ? Colors.danger : Colors.secondary};
-    box-shadow: 0 0 0 4px ${props => props.$hasError ? 'rgba(220, 53, 69, 0.1)' : 'rgba(0, 184, 148, 0.1)'};
-    background: ${Colors.white};
-    transform: translateY(-2px);
-  }
-  
-  &::placeholder {
-    color: ${Colors.darkGray};
-    font-weight: 400;
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-`;
-
-const IconWrapper = styled.div`
-  position: absolute;
-  left: 1.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: ${props => props.$hasError ? Colors.danger : Colors.darkGray};
-  z-index: 2;
-  transition: all 0.3s ease;
-`;
-
-const PasswordToggle = styled.button`
-  position: absolute;
-  right: 1.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: ${Colors.darkGray};
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    color: ${Colors.primary};
-    background: rgba(99, 102, 241, 0.1);
-    transform: translateY(-50%) scale(1.1);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const LoginButton = styled.button`
-  width: 100%;
-  padding: 1.375rem;
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.primaryLight} 100%);
-  color: ${Colors.white};
-  border: none;
-  border-radius: 16px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(44, 62, 80, 0.3);
-  
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: 
-      0 15px 35px rgba(44, 62, 80, 0.4),
-      0 0 0 1px rgba(255, 255, 255, 0.1);
-    animation: ${pulse} 0.5s ease;
-  }
-  
-  &:active {
-    transform: translateY(-1px);
-  }
-  
-  &:disabled {
-    opacity: 0.8;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 4px 15px rgba(44, 62, 80, 0.2);
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    transition: left 0.7s;
-  }
-
-  &:hover::before {
-    left: 100%;
-  }
-`;
-
-const Loader = styled.div`
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: ${Colors.white};
-  animation: ${spin} 0.8s ease infinite;
-`;
-
-const Message = styled.div`
-  padding: 1.25rem 1.5rem;
-  border-radius: 16px;
-  margin-bottom: 1.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  border-left: 6px solid;
-  animation: ${fadeIn} 0.5s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  
-  ${props => props.type === 'error' && css`
-    background: rgba(239, 68, 68, 0.1);
-    color: ${Colors.danger};
-    border-left-color: ${Colors.danger};
-  `}
-  
-  ${props => props.type === 'success' && css`
-    background: rgba(16, 185, 129, 0.1);
-    color: ${Colors.success};
-    border-left-color: ${Colors.success};
-  `}
-  
-  ${props => props.type === 'info' && css`
-    background: rgba(59, 130, 246, 0.1);
-    color: ${Colors.info};
-    border-left-color: ${Colors.info};
-  `}
-  
-  ${props => props.type === 'warning' && css`
-    background: rgba(245, 158, 11, 0.1);
-    color: ${Colors.warning};
-    border-left-color: ${Colors.warning};
-  `}
-`;
-
-// Authentication Popup Modal
-const AuthPopup = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: ${fadeIn} 0.3s ease;
-`;
-
-const PopupContent = styled.div`
-  background: ${Colors.white};
-  padding: 3rem;
-  border-radius: 24px;
-  text-align: center;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-  animation: ${fadeIn} 0.5s ease;
-  max-width: 400px;
-  width: 90%;
-`;
-
-const PopupIcon = styled.div`
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: ${props => props.success ?
-    'rgba(16, 185, 129, 0.1)' :
-    'rgba(59, 130, 246, 0.1)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-  
-  svg {
-    width: 40px;
-    height: 40px;
-    color: ${props => props.success ? Colors.success : Colors.info};
-    animation: ${bounce} 1s ease;
-  }
-`;
-
-const PopupTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: ${Colors.textPrimary};
-  margin: 0 0 1rem 0;
-`;
-
-const PopupMessage = styled.p`
-  color: ${Colors.textSecondary};
-  font-size: 1.1rem;
-  line-height: 1.6;
-  margin: 0;
-`;
-
-// Enhanced Login Component 
 function LoginPage() {
+  const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -639,9 +54,14 @@ function LoginPage() {
   const [currentTime, setCurrentTime] = useState('');
   const [showAuthPopup, setShowAuthPopup] = useState(false);
   const [authPopupData, setAuthPopupData] = useState({ success: false, message: '' });
-  const navigate = useNavigate();
+  const [navScrolled, setNavScrolled] = useState(false);
 
-  // Update current time
+  useEffect(() => {
+    const fn = () => setNavScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', fn, { passive: true });
+    return () => window.removeEventListener('scroll', fn);
+  }, []);
+
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -649,32 +69,26 @@ function LoginPage() {
         hour12: true,
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit'
       });
       const dateString = now.toLocaleDateString('en-US', {
         weekday: 'long',
-        year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
       setCurrentTime(`${dateString} • ${timeString}`);
     };
-
     updateTime();
-    const interval = setInterval(updateTime, 1000);
+    const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Clear any stale auth data on mount (fixes stuck login state)
   useEffect(() => {
-    // Clear any invalid tokens on login page load
     const token = localStorage.getItem('authToken');
     if (token === 'undefined' || token === 'null') {
       localStorage.clear();
     }
   }, []);
 
-  // Set cookie function
   const setCookie = (name, value, days) => {
     const expires = new Date();
     expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -686,52 +100,62 @@ function LoginPage() {
     setIsLoading(true);
     setMessage({ type: '', text: '' });
 
-    // Validation
     if (!identifier.trim() || !password.trim()) {
-      setMessage({
-        type: 'error',
-        text: 'Please enter both email/username and password'
-      });
+      setMessage({ type: 'error', text: 'Please enter both email and password' });
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('🔐 Attempting login...');
-      
       const data = await authApi.login({
-        email: identifier.trim(),  // Use 'email' instead of 'identifier'
+        email: identifier.trim(),
         password: password.trim()
       });
-      
-      console.log('📦 Login response:', data);
 
       if (data && data.success) {
-        // Store token - use the correct key from API response
-        const token = data.token || data.accessToken;
+        const token = data.accessToken || data.token;
         
         if (!token) {
           throw new Error('No token received from server');
         }
-        
+
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('loginTime', new Date().toISOString());
 
-        // Store token in cookie
+        if (data.tenant) {
+          localStorage.setItem('tenant', JSON.stringify(data.tenant));
+          if (data.tenant.tenantSlug) {
+            localStorage.setItem('tenantSlug', data.tenant.tenantSlug);
+          }
+          if (data.tenant.tenantId) {
+            localStorage.setItem('tenantId', data.tenant.tenantId.toString());
+          }
+          if (data.tenant.dbName) {
+            localStorage.setItem('dbName', data.tenant.dbName);
+          }
+        }
+
+        if (data.tenantSlug) {
+          localStorage.setItem('tenantSlug', data.tenantSlug);
+        }
+
+        if (data.user?.role) {
+          localStorage.setItem('userRole', data.user.role);
+        }
+
         setCookie('authToken', token, 7);
         if (data.user?.role) setCookie('userRole', data.user.role, 7);
+        if (data.tenant?.tenantSlug) setCookie('tenantSlug', data.tenant.tenantSlug, 7);
 
-        setMessage({
-          type: 'success',
-          text: 'Login successful! Redirecting to dashboard...'
+        setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
+
+        setAuthPopupData({ 
+          success: true, 
+          message: `Welcome ${data.user?.fullName || 'User'}! Redirecting to dashboard...` 
         });
-
-        // Show success popup
-        setAuthPopupData({ success: true, message: 'Authentication successful! Redirecting to dashboard...' });
         setShowAuthPopup(true);
 
-        // Redirect after delay
         setTimeout(() => {
           setShowAuthPopup(false);
           navigate('/dashboard');
@@ -758,159 +182,337 @@ function LoginPage() {
 
   return (
     <>
-      <LoginContainer>
-        <FloatingShapes>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-        </FloatingShapes>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
 
-        <LoginCard>
-          <LoginLeftPanel>
-            <LoginLogo>
-              <Shield size={40} />
-              RP MMS
-            </LoginLogo>
-            <LoginSubtitle>
-              Secure Access Portal for Mortuary Management Software (MMS)
-            </LoginSubtitle>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        html{scroll-behavior:smooth;background:${T.bg0};}
+        body{overflow-x:hidden;background:${T.bg0};color:${T.light};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+        ::selection{background:rgba(4,200,0,.2);color:${T.g};}
+        ::-webkit-scrollbar{width:3px;}
+        ::-webkit-scrollbar-track{background:${T.bg0};}
+        ::-webkit-scrollbar-thumb{background:${T.dim};border-radius:3px;}
+        ::-webkit-scrollbar-thumb:hover{background:${T.g};}
 
-            <FeatureList>
-              <li>
-                <CheckCircle size={20} />
-                Secure & Encrypted Data Storage
-              </li>
-              <li>
-                <CheckCircle size={20} />
-                Real-time Monitoring & Alerts
-              </li>
-              <li>
-                <CheckCircle size={20} />
-                Advanced Analytics & Dashboards
-              </li>
-              <li>
-                <CheckCircle size={20} />
-                24/7 System uptime!
-              </li>
-            </FeatureList>
+        .cg{font-family:'Cormorant Garamond',Georgia,serif;}
+        .syne{font-family:'Syne',sans-serif;}
 
-            {currentTime && (
-              <TimeDisplay>
-                <Clock size={20} />
-                {currentTime}
-              </TimeDisplay>
-            )}
-          </LoginLeftPanel>
+        .inp:focus{outline:none;border-color:${T.g}!important;box-shadow:0 0 0 3px ${T.ga};}
 
-          <LoginRightPanel>
-            <LoginForm onSubmit={handleLogin}>
-              <WelcomeSection>
-                <WelcomeTitle>
-                  <Users size={32} />
-                  Welcome Back!
-                </WelcomeTitle>
-                <WelcomeText>
-                  Welcome back! Let's get things in order.
-                </WelcomeText>
-              </WelcomeSection>
+        @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .fade-in{animation:fadeIn .5s ease forwards;}
+      `}</style>
 
-              {message.text && (
-                <Message type={message.type}>
-                  {message.type === 'success' ?
-                    <CheckCircle size={24} /> :
-                    <AlertCircle size={24} />
-                  }
-                  {message.text}
-                </Message>
-              )}
+      {/* Navigation */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 300,
+        background: navScrolled ? `rgba(4,4,4,.94)` : 'transparent',
+        borderBottom: navScrolled ? `1px solid ${T.line}` : '1px solid transparent',
+        padding: '.9rem 0',
+        transition: 'all .3s ease',
+        backdropFilter: navScrolled ? 'blur(24px) saturate(1.4)' : 'none',
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: T.ga, border: `1px solid rgba(4,200,0,.2)`, borderRadius: '8px', padding: '.4rem .9rem' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: T.g, boxShadow: `0 0 10px ${T.g}` }} />
+              <span className="syne" style={{ fontSize: '.72rem', fontWeight: 800, letterSpacing: '.16em', color: T.g }}>REST POINT</span>
+            </div>
+            <span className="syne" style={{ fontSize: '.5rem', color: T.sub, letterSpacing: '.14em', textTransform: 'uppercase' }}>Mortuary OS</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span className="syne" style={{ fontSize: '.6rem', color: T.muted, letterSpacing: '.12em', textTransform: 'uppercase' }}>Sign In</span>
+            <button onClick={() => navigate('/register')} className="syne" style={{ background: T.g, color: '#000', border: 'none', padding: '.44rem 1rem', borderRadius: '8px', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', cursor: 'pointer', transition: 'all .2s' }} onMouseEnter={(e) => { e.target.style.background = T.gl; e.target.style.transform = 'translateY(-1px)'; }} onMouseLeave={(e) => { e.target.style.background = T.g; e.target.style.transform = 'translateY(0)'; }}>Start Trial</button>
+          </div>
+        </div>
+      </nav>
 
-              <FormGroup>
-                <FormLabel>
-                  <Mail size={20} />
-                  Email Address
-                </FormLabel>
-                <InputWrapper $hasError={hasError && !identifier}>
-                  <IconWrapper $hasError={hasError && !identifier}>
-                    <User size={22} />
-                  </IconWrapper>
-                  <FormInput
-                    type="email"
-                    placeholder="Enter your email address"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    $hasError={hasError && !identifier}
-                  />
-                </InputWrapper>
-              </FormGroup>
+      {/* Main Content */}
+      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '60px', position: 'relative', overflow: 'hidden' }}>
+        {/* Background grid */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px)', backgroundSize: '80px 80px', pointerEvents: 'none' }} />
+        
+        {/* Glow orbs */}
+        <div style={{ position: 'absolute', top: '-20%', right: '-8%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(4,200,0,.05) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-10%', left: '10%', width: '400px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(4,200,0,.03) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
 
-              <FormGroup>
-                <FormLabel>
-                  <Lock size={20} />
-                  Password
-                </FormLabel>
-                <InputWrapper $hasError={hasError && !password}>
-                  <IconWrapper $hasError={hasError && !password}>
-                    <Lock size={22} />
-                  </IconWrapper>
-                  <FormInput
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your secure password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    $hasError={hasError && !password}
-                  />
-                  <PasswordToggle
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
-                  >
-                    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-                  </PasswordToggle>
-                </InputWrapper>
-              </FormGroup>
+        <div style={{ maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '2rem 1.75rem', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', borderRadius: '14px', overflow: 'hidden', border: `1px solid ${T.line}`, boxShadow: '0 40px 80px -20px rgba(0,0,0,.8)' }}>
+            
+            {/* Left Panel - Branding */}
+            <div style={{
+              background: `linear-gradient(135deg, ${T.bg2} 0%, ${T.bg0} 100%)`,
+              padding: '3rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              {/* Decorative grid overlay */}
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
+              
+              {/* Glow effect */}
+              <div style={{ position: 'absolute', top: '-30%', left: '-30%', width: '200px', height: '200px', borderRadius: '50%', background: `radial-gradient(circle, ${T.ga} 0%, transparent 70%)`, filter: 'blur(60px)', pointerEvents: 'none' }} />
 
-              <LoginButton type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader />
-                    Authenticating...
-                  </>
-                ) : (
-                  <>
-                    <LogOut size={24} />
-                    Sign In - RP MMS
-                  </>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                {/* Logo */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', background: T.ga, border: `1px solid rgba(4,200,0,.2)`, borderRadius: '8px', padding: '.35rem .75rem' }}>
+                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: T.g, boxShadow: `0 0 8px ${T.g}` }} />
+                    <span className="syne" style={{ fontSize: '.65rem', fontWeight: 800, letterSpacing: '.16em', color: T.g }}>REST POINT</span>
+                  </div>
+                </div>
+
+                <h1 className="cg" style={{ fontSize: '2.2rem', fontWeight: 600, color: T.white, marginBottom: '.75rem', letterSpacing: '-.02em', lineHeight: 1.2 }}>
+                  Mortuary<br /><span style={{ color: T.g, fontStyle: 'italic' }}>Management</span> System
+                </h1>
+
+                <p style={{ fontSize: '.88rem', color: T.mid, lineHeight: 1.7, marginBottom: '2rem', maxWidth: '300px' }}>
+                  Secure access portal for modern funeral home operations. Built for East Africa.
+                </p>
+
+                {/* Features */}
+                <div style={{ marginBottom: '2.5rem' }}>
+                  {[
+                    [I.shield, 'AES-256 Encryption'],
+                    [I.users, 'Multi-Branch Access'],
+                    [I.cloud, 'Cloud Sync'],
+                    [I.log, 'Audit Logging'],
+                  ].map(([ic, label]) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '.65rem', marginBottom: '.75rem' }}>
+                      <span style={{ color: T.g }}>{ic}</span>
+                      <span className="syne" style={{ fontSize: '.72rem', color: T.light, fontWeight: 500, letterSpacing: '.03em' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Time display */}
+                {currentTime && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: T.ga, border: `1px solid rgba(4,200,0,.15)`, borderRadius: '8px', padding: '.5rem .85rem' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.g} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span className="syne" style={{ fontSize: '.62rem', color: T.g, fontWeight: 600, letterSpacing: '.05em' }}>{currentTime}</span>
+                  </div>
                 )}
-              </LoginButton>
-            </LoginForm>
-          </LoginRightPanel>
-        </LoginCard>
-      </LoginContainer>
+              </div>
+            </div>
 
-      {/* Authentication Popup */}
+            {/* Right Panel - Login Form */}
+            <div style={{
+              background: T.bg3,
+              padding: '3rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+            }}>
+              <div style={{ marginBottom: '2rem' }}>
+                <div className="eye" style={{ marginBottom: '.5rem' }}>Welcome Back</div>
+                <h2 className="cg" style={{ fontSize: '1.6rem', fontWeight: 600, color: T.white, marginBottom: '.25rem' }}>Sign in to your account</h2>
+                <p style={{ fontSize: '.8rem', color: T.muted }}>Enter your credentials to access the dashboard</p>
+              </div>
+
+              <form onSubmit={handleLogin}>
+                {/* Message */}
+                {message.text && (
+                  <div className="fade-in" style={{
+                    background: message.type === 'error' ? 'rgba(201,76,76,.1)' : T.ga,
+                    border: `1px solid ${message.type === 'error' ? 'rgba(201,76,76,.3)' : 'rgba(4,200,0,.3)'}`,
+                    color: message.type === 'error' ? '#ff6b6b' : T.g,
+                    padding: '.75rem',
+                    borderRadius: '8px',
+                    marginBottom: '1.25rem',
+                    fontSize: '.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '.5rem',
+                  }}>
+                    {message.type === 'error' ? '⚠️' : '✅'} {message.text}
+                  </div>
+                )}
+
+                {/* Email */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label className="syne" style={{ display: 'block', fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: T.muted, marginBottom: '.5rem', fontWeight: 600 }}>Email Address</label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '.85rem', top: '50%', transform: 'translateY(-50%)', color: T.muted }}>{I.mail}</div>
+                    <input
+                      type="email"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="admin@funeralhome.co.ke"
+                      className="inp"
+                      style={{
+                        width: '100%',
+                        padding: '.75rem .85rem .75rem 2.5rem',
+                        background: T.bg4,
+                        border: `1px solid ${hasError && !identifier ? '#c94c4c' : T.line2}`,
+                        borderRadius: '8px',
+                        fontSize: '.88rem',
+                        color: T.light,
+                        transition: 'all .2s',
+                      }}
+                    />
+                  </div>
+                  {hasError && !identifier && <div style={{ color: '#c94c4c', fontSize: '.65rem', marginTop: '.25rem' }}>Email is required</div>}
+                </div>
+
+                {/* Password */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="syne" style={{ display: 'block', fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: T.muted, marginBottom: '.5rem', fontWeight: 600 }}>Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '.85rem', top: '50%', transform: 'translateY(-50%)', color: T.muted }}>{I.lock}</div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="inp"
+                      style={{
+                        width: '100%',
+                        padding: '.75rem .85rem .75rem 2.5rem',
+                        background: T.bg4,
+                        border: `1px solid ${hasError && !password ? '#c94c4c' : T.line2}`,
+                        borderRadius: '8px',
+                        fontSize: '.88rem',
+                        color: T.light,
+                        transition: 'all .2s',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '.75rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: T.muted,
+                        padding: '.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'color .2s',
+                      }}
+                      onMouseEnter={(e) => e.target.style.color = T.light}
+                      onMouseLeave={(e) => e.target.style.color = T.muted}
+                    >
+                      {showPassword ? I.eyeOff : I.eye}
+                    </button>
+                  </div>
+                  {hasError && !password && <div style={{ color: '#c94c4c', fontSize: '.65rem', marginTop: '.25rem' }}>Password is required</div>}
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="syne"
+                  style={{
+                    width: '100%',
+                    background: isLoading ? T.dim : T.g,
+                    color: isLoading ? T.muted : '#000',
+                    border: 'none',
+                    padding: '.85rem',
+                    borderRadius: '8px',
+                    fontSize: '.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    opacity: isLoading ? 0.6 : 1,
+                    boxShadow: isLoading ? 'none' : '0 4px 24px -6px rgba(4,200,0,.5)',
+                    transition: 'all .22s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '.5rem',
+                  }}
+                  onMouseEnter={(e) => { if (!isLoading) { e.target.style.background = T.gl; e.target.style.transform = 'translateY(-1px)'; } }}
+                  onMouseLeave={(e) => { if (!isLoading) { e.target.style.background = T.g; e.target.style.transform = 'translateY(0)'; } }}
+                >
+                  {isLoading ? (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      Signing In...
+                    </>
+                  ) : (
+                    <>
+                      Sign In {I.arr}
+                    </>
+                  )}
+                </button>
+
+                {/* Footer links */}
+                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                  <p style={{ fontSize: '.75rem', color: T.muted }}>
+                    Don't have an account?{' '}
+                    <button 
+                      type="button"
+                      onClick={() => navigate('/register')}
+                      style={{ background: 'none', border: 'none', color: T.g, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(4,200,0,.4)', transition: 'color .2s', fontSize: '.75rem' }}
+                      onMouseEnter={(e) => e.target.style.color = T.gl}
+                      onMouseLeave={(e) => e.target.style.color = T.g}
+                    >
+                      Start free trial
+                    </button>
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Auth Popup */}
       {showAuthPopup && (
-        <AuthPopup>
-          <PopupContent>
-            <PopupIcon success={authPopupData.success}>
-              {authPopupData.success ? (
-                <CheckCircle />
-              ) : (
-                <LoaderIcon className="spinning" />
-              )}
-            </PopupIcon>
-            <PopupTitle>
-              {authPopupData.success ? 'Success!' : 'Authenticating...'}
-            </PopupTitle>
-            <PopupMessage>
-              {authPopupData.message}
-            </PopupMessage>
-          </PopupContent>
-        </AuthPopup>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.92)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+        }}>
+          <div className="fade-in" style={{
+            background: T.bg3,
+            border: `1px solid ${T.line}`,
+            borderRadius: '14px',
+            padding: '2.5rem',
+            textAlign: 'center',
+            maxWidth: '380px',
+            width: '100%',
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: T.ga,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              color: T.g,
+            }}>
+              {I.check}
+            </div>
+            <h3 className="cg" style={{ fontSize: '1.4rem', color: T.white, marginBottom: '.5rem', fontWeight: 600 }}>
+              {authPopupData.success ? 'Success!' : 'Signing In...'}
+            </h3>
+            <p style={{ fontSize: '.85rem', color: T.mid, lineHeight: 1.6 }}>{authPopupData.message}</p>
+          </div>
+        </div>
       )}
     </>
   );

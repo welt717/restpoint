@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createGlobalStyle } from 'styled-components';
 import styled from 'styled-components';
 import { 
@@ -183,36 +184,21 @@ const MainContent = styled.main`
   scrollbar-color: #c1c1c1 rgba(241, 241, 241, 0.5);
 `;
 
+// Sleek Professional Bottom Navigation
 const BottomNavigation = styled.nav`
   position: fixed;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  background: ${Colors.white};
-  border-radius: 0px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 14, 39, 0.95);
+  backdrop-filter: blur(20px);
   display: flex;
-  padding: 0rem;
+  padding: 0;
   z-index: 100;
-  box-shadow: 
-    0 -1px 2px ${Colors.shadowLight},
-    0 3px 8px ${Colors.shadowMedium},
-    0 6px 16px ${Colors.shadowDark},
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(15px);
-  transform: translateY(0);
-  transition: all 0.3s ease;
-  height: 42px;
-  padding-top: 2px;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 
-      0 -1px 2px ${Colors.shadowLight},
-      0 4px 12px ${Colors.shadowMedium},
-      0 8px 20px ${Colors.shadowDark},
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  }
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(34, 197, 94, 0.15);
+  height: 64px;
+  align-items: center;
 `;
 
 const NavButton = styled.button`
@@ -220,43 +206,37 @@ const NavButton = styled.button`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
-  padding: 0.1rem 0.1rem;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
   background: transparent;
   border: none;
-  border-radius: 10px;
-  color: ${props => props.active ? Colors.vibrantBlue : Colors.darkGray};
-  font-size: 0.25rem;
+  color: ${props => props.active ? Colors.successGreen : 'rgba(255, 255, 255, 0.5)'};
+  font-size: 0.65rem;
   font-weight: ${props => props.active ? '600' : '400'};
-  text-transform: lowercase;
-  letter-spacing: 0.2px;
   transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
-  min-height: 44px;
+  min-height: 56px;
 
   &::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: ${props => props.active ? 
-      `linear-gradient(135deg, ${Colors.vibrantBlue}15, ${Colors.deepPurple}10)` : 
-      'transparent'};
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    left: 50%;
+    transform: translateX(-50%);
+    width: ${props => props.active ? '40px' : '0px'};
+    height: 2px;
+    background: ${Colors.successGreen};
+    border-radius: 0 0 2px 2px;
+    transition: all 0.3s ease;
   }
 
-  &:hover::before {
-    background: ${props => props.active ? 
-      `linear-gradient(135deg, ${Colors.vibrantBlue}20, ${Colors.deepPurple}15)` : 
-      `linear-gradient(135deg, ${Colors.vibrantBlue}08, ${Colors.deepPurple}05)`};
+  &:hover {
+    color: rgba(255, 255, 255, 0.8);
   }
 
   &:active {
-    transform: scale(0.98);
+    transform: scale(0.95);
   }
 `;
 
@@ -267,29 +247,21 @@ const NavIcon = styled.div`
   transition: all 0.2s ease;
   position: relative;
   z-index: 1;
-  color: ${props => props.active ? Colors.vibrantBlue : Colors.darkGray};
   
   svg {
-    width: 14px;
-    height: 14px;
-    stroke-width: 2px;
+    width: 20px;
+    height: 20px;
+    stroke-width: ${props => props.active ? 2.5 : 2};
   }
-  
-  ${NavButton}:hover & {
-    color: ${Colors.vibrantBlue};
-  }
+
 `;
 
 const NavLabel = styled.span`
   position: relative;
   z-index: 1;
-  transition: all 0.2s ease;
-  font-size: 0.55rem;
-  font-weight:  500;
-  
-  ${NavButton}:hover & {
-    color: ${Colors.vibrantBlue};
-  }
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 `;
 
 // Simple page header component
@@ -304,20 +276,20 @@ const PageHeader = styled.div`
 `;
 
 const PageHeaderContent = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  display: flex;       
+  align-items: center;        
+  gap: 1rem;    
 `;
 
 const BackButton = styled.button`
-  background: none;
-  border: none;
-  color: ${Colors.white};
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
+  background: none;            
+  border: none;   
+  color: ${Colors.white};      
+  cursor: pointer;             
+  padding: 0.5rem;         
+  display: flex;              
   align-items: center;
-  justify-content: center;
+  justify-content: center;       
   
   svg {
     width: 20px;
@@ -372,6 +344,8 @@ import MarketplacePage from './pages/marketplacePage';
 import ProfilePage from './pages/profilePage';
 import DocumentsPage from './pages/documentsPage';
 import PaymentsPage from './pages/paymentsPage';
+import AIAssistant from './components/AIAssistant';
+import NotificationSystem from './components/NotificationSystem';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -608,6 +582,24 @@ function App() {
           >
             <ArrowUp />
           </ScrollToTopButton>
+        )}
+
+        {/* AI Assistant - Available on all authenticated pages */}
+        {isAuthenticated && (
+          <AIAssistant 
+            userData={userData}
+            tenantSlug={localStorage.getItem('tenantSlug') || 'restpoint'}
+            deceasedId={localStorage.getItem('deceased_id')}
+          />
+        )}
+
+        {/* Real-time Notification System */}
+        {isAuthenticated && (
+          <NotificationSystem 
+            userData={userData}
+            tenantSlug={localStorage.getItem('tenantSlug') || 'restpoint'}
+            deceasedId={localStorage.getItem('deceased_id')}
+          />
         )}
 
         {isAuthenticated && currentPage === 'main' && (

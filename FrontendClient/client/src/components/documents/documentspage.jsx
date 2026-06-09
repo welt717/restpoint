@@ -5,7 +5,8 @@ import {
   ArrowLeft, FileText, Download, Eye, Trash2, User, AlertCircle, 
   CheckCircle, Printer, X, Search, Filter, Share2, Mail, MessageCircle,
   Tag, Calendar, HardDrive, Type, User as UserIcon, ExternalLink,
-  ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, Smartphone, Wifi, WifiOff
+  ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, Smartphone, Wifi, WifiOff,
+  Upload, Plus
 } from 'lucide-react';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
@@ -15,13 +16,14 @@ import { useReactToPrint } from 'react-to-print';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
-// API Configuration
-const BASE_API = 'http://localhost:5000/api/v1/restpoint';
+// API Configuration - Centralized API Gateway
+const API_GATEWAY = process.env.REACT_APP_API_GATEWAY || 'http://localhost:5000';
+const BASE_API = `${API_GATEWAY}/api/v1/restpoint`;
 
 // Enhanced Styled Components with minimal padding
 const PageContainer = styled.div`
   min-height: 100vh;
-  padding: 0.5rem; // Reduced padding
+  padding: 0.5rem;
   background: #f8fafc;
   font-family: 'Inter', sans-serif;
 
@@ -32,10 +34,10 @@ const PageContainer = styled.div`
 
 const Header = styled.div`
   background: white;
-  border-radius: 0.5rem; // Smaller radius
-  padding: 1rem; // Reduced padding
+  border-radius: 0.5rem;
+  padding: 1rem;
   margin-bottom: 1rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06); // Lighter shadow
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -129,7 +131,7 @@ const BackButton = styled.button`
 const ContentCard = styled.div`
   background: white;
   border-radius: 0.5rem;
-  padding: 1rem; // Reduced padding
+  padding: 1rem;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   margin-bottom: 1rem;
 
@@ -213,6 +215,15 @@ const DocumentMeta = styled.div`
   }
 `;
 
+const CategoryBadge = styled.span`
+  background: ${props => props.color || '#e2e8f0'};
+  color: ${props => props.textColor || '#475569'};
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+`;
+
 const MetaBadge = styled.span`
   display: inline-flex;
   align-items: center;
@@ -229,15 +240,6 @@ const MetaBadge = styled.span`
     font-size: 0.65rem;
     padding: 0.15rem 0.3rem;
   }
-`;
-
-const CategoryBadge = styled.span`
-  background: ${props => props.color || '#e2e8f0'};
-  color: ${props => props.textColor || '#475569'};
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 500;
 `;
 
 const ActionButtons = styled.div`
@@ -384,7 +386,6 @@ const PageInput = styled.input`
     border-radius: 0.25rem;
   }
   
-  /* Hide number input arrows */
   &::-webkit-outer-spin-button,
   &::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -462,22 +463,21 @@ const PDFContent = styled.div`
   padding: 1rem;
   background: #f1f5f9;
   scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  
-  /* Hide scrollbar for Chrome, Safari and Opera */
+  -webkit-overflow-scrolling: touch;
+
   &::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: #f1f5f9;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
   }
-  
+
   &::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
@@ -593,7 +593,7 @@ const ClearCacheButton = styled.button`
   }
 `;
 
-// Enhanced Modal Components
+// Modal Components
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -760,6 +760,54 @@ const SubmitButton = styled.button`
   }
 `;
 
+// Upload Modal Components
+const UploadArea = styled.div`
+  border: 2px dashed #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+
+  &:hover {
+    border-color: #3b82f6;
+    background: #f8fafc;
+  }
+
+  &.dragover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+  }
+`;
+
+const UploadButton = styled.button`
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+
+  &:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 // Category colors mapping
 const CATEGORY_COLORS = {
   'Identification': { bg: '#dbeafe', text: '#1e40af' },
@@ -794,7 +842,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
   const containerRef = useRef(null);
   const pdfContainerRef = useRef(null);
 
-  // Initialize offline cache
   useEffect(() => {
     const initOfflineCache = async () => {
       if ('caches' in window) {
@@ -805,9 +852,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
             setIsCached(true);
             const blob = await cachedResponse.blob();
             setPdfBlob(blob);
-          } else {
-            // Cache the PDF
-            await cachePDF();
           }
         } catch (error) {
           console.error('Cache error:', error);
@@ -817,7 +861,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
 
     initOfflineCache();
 
-    // Online/offline detection
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
@@ -830,7 +873,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
     };
   }, [document.url]);
 
-  // Cache PDF for offline use
   const cachePDF = async () => {
     if (!('caches' in window)) return;
 
@@ -841,20 +883,11 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
       setIsCached(true);
       const blob = await response.blob();
       setPdfBlob(blob);
-      
-      // Register for PWA install
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(registration => {
-          // Cache the PDF in service worker too
-          fetch(document.url);
-        });
-      }
     } catch (error) {
       console.error('Failed to cache PDF:', error);
     }
   };
 
-  // Clear cache
   const clearCache = async () => {
     if ('caches' in window) {
       try {
@@ -872,17 +905,14 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
     setNumPages(numPages);
     setPageNumber(1);
     
-    // Smooth scroll to top
     if (pdfContainerRef.current) {
       pdfContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 
-  // Navigation functions
   const goToPage = (page) => {
     if (page >= 1 && page <= numPages) {
       setPageNumber(page);
-      // Smooth scroll to top of container
       if (pdfContainerRef.current) {
         pdfContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -892,21 +922,18 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
   const previousPage = () => goToPage(pageNumber - 1);
   const nextPage = () => goToPage(pageNumber + 1);
 
-  // Zoom functions
   const zoomIn = () => setScale(prev => Math.min(prev + 0.25, 3.0));
   const zoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.5));
   const zoomToFit = () => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth;
-      setScale(containerWidth / 800); // Adjust based on typical PDF width
+      setScale(containerWidth / 800);
     }
   };
   const resetZoom = () => setScale(1.0);
 
-  // Rotation
   const rotate = () => setRotation(prev => (prev + 90) % 360);
 
-  // Fullscreen toggle
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen?.();
@@ -917,7 +944,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
     }
   };
 
-  // Print PDF
   const handlePrint = () => {
     try {
       if (pdfBlob) {
@@ -931,7 +957,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
           };
         }
       } else {
-        // Fallback to iframe printing
         const printFrame = document.createElement('iframe');
         printFrame.style.display = 'none';
         printFrame.src = document.url;
@@ -954,7 +979,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
     }
   };
 
-  // Download PDF
   const handleDownload = () => {
     try {
       const link = document.createElement('a');
@@ -967,7 +991,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       } else {
-        // Direct download if no blob
         link.href = document.url;
         link.download = document.originalName || 'document.pdf';
         link.target = '_blank';
@@ -983,7 +1006,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
     }
   };
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -1049,13 +1071,11 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
         onClick={(e) => e.stopPropagation()}
         className={isFullscreen ? 'fullscreen' : ''}
       >
-        {/* Enhanced Toolbar */}
         <PDFToolbar>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <FileText size={20} color="#3b82f6" />
             <PDFTitle>{document.originalName}</PDFTitle>
             
-            {/* Online/Offline Indicator */}
             <NetworkStatus>
               {isOnline ? (
                 <Wifi size={14} color="#10b981" title="Online" />
@@ -1069,7 +1089,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
           </div>
           
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            {/* Page Navigation */}
             <PageNavigation>
               <PDFActionButton 
                 onClick={previousPage}
@@ -1097,7 +1116,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
               </PDFActionButton>
             </PageNavigation>
 
-            {/* Zoom Controls */}
             <ZoomControls>
               <PDFActionButton onClick={zoomOut} title="Zoom out (Ctrl+-)">
                 <ZoomOut size={16} />
@@ -1114,12 +1132,10 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
               </PDFActionButton>
             </ZoomControls>
 
-            {/* Rotation */}
             <PDFActionButton onClick={rotate} title="Rotate">
               <RotateCw size={16} />
             </PDFActionButton>
 
-            {/* Main Actions */}
             <PDFActionButton 
               onClick={handleDownload}
               bgColor="#10b981"
@@ -1138,7 +1154,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
               <Printer size={16} />
             </PDFActionButton>
 
-            {/* Fullscreen */}
             <PDFActionButton 
               onClick={toggleFullscreen}
               title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen (Ctrl+F)"}
@@ -1146,7 +1161,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </PDFActionButton>
 
-            {/* Close */}
             <PDFActionButton 
               onClick={onClose}
               bgColor="#ef4444"
@@ -1158,7 +1172,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
           </div>
         </PDFToolbar>
 
-        {/* Enhanced PDF Content with smooth scrolling */}
         <PDFContent ref={pdfContainerRef}>
           <Document
             file={pdfBlob ? URL.createObjectURL(pdfBlob) : document.url}
@@ -1179,7 +1192,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
               </ErrorContainer>
             }
           >
-            {/* Render all pages for smooth scrolling */}
             {Array.from(new Array(numPages), (el, index) => (
               <PDFPageContainer key={`page_${index + 1}`}>
                 <Page 
@@ -1198,7 +1210,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
           </Document>
         </PDFContent>
 
-        {/* Bottom toolbar for mobile */}
         <MobileToolbar>
           <PDFActionButton onClick={previousPage} disabled={pageNumber <= 1}>
             ←
@@ -1221,7 +1232,6 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
           </PDFActionButton>
         </MobileToolbar>
 
-        {/* Cache management (optional, can be hidden in settings) */}
         <CacheControls>
           <small style={{ color: '#64748b' }}>
             {isCached ? '✓ Available offline' : 'Online only'}
@@ -1237,6 +1247,7 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
   );
 };
 
+// Main Documents Page Component
 const DocumentsPage = () => {
   const params = useParams();
   const navigate = useNavigate();
@@ -1255,25 +1266,30 @@ const DocumentsPage = () => {
     message: ''
   });
   const [isSharing, setIsSharing] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(null);
+  const [uploadCategory, setUploadCategory] = useState('General');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const deceasedId = params.deceasedId || params.id;
 
   const getUsername = () => {
     try {
       const userData = localStorage.getItem('user');
       if (userData) {
         const user = JSON.parse(userData);
-        return user.name || user.username || user.email || 'Mumo';
+        return user.name || user.username || user.email || 'User';
       }
     } catch (error) {
       console.error('Error getting user data:', error);
     }
-    return 'Mumo';
+    return 'User';
   };
-
-  const deceasedId = params.deceasedId || params.id;
 
   useEffect(() => {
     if (deceasedId) {
       fetchDocuments();
+      fetchDeceasedDetails();
     } else {
       setIsLoading(false);
     }
@@ -1287,23 +1303,22 @@ const DocumentsPage = () => {
     try {
       setIsLoading(true);
       
+      // Fetch documents for this specific deceased from centralized API
       const API_URL = `${BASE_API}/documents/${deceasedId}`;
 
       const response = await axios.get(API_URL, {
-        timeout: 10000,
+        timeout: 15000,
         headers: {
           'Content-Type': 'application/json',
+          'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
         }
       });
       
       if (response.data && response.data.success) {
-        const documentsData = response.data.files || response.data.data || [];
-        setDocuments(documentsData);
+        setDocuments(response.data.files || []);
       } else {
         setDocuments([]);
       }
-      
-      await fetchDeceasedDetails();
       
       setIsLoading(false);
       
@@ -1315,7 +1330,7 @@ const DocumentsPage = () => {
       if (error.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout - server is not responding';
       } else if (error.response) {
-        errorMessage = `Server error: ${error.response.status} - ${error.response.statusText}`;
+        errorMessage = `Server error: ${error.response.status}`;
       } else if (error.request) {
         errorMessage = 'No response from server - check if backend is running';
       }
@@ -1327,7 +1342,13 @@ const DocumentsPage = () => {
 
   const fetchDeceasedDetails = async () => {
     try {
-      const response = await axios.get(`${BASE_API}/deceased/${deceasedId}`);
+      // Fetch deceased details from the portal API
+      const response = await axios.get(`${BASE_API}/deceased/${deceasedId}`, {
+        timeout: 10000,
+        headers: {
+          'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+        }
+      });
       
       if (response.data && response.data.data) {
         setDeceasedData(response.data.data);
@@ -1335,7 +1356,7 @@ const DocumentsPage = () => {
         setDeceasedData({ full_name: 'Unknown Deceased' });
       }
     } catch (error) {
-      console.log('Could not fetch deceased details:', error.message);
+      console.log('Could not fetch deceased details, using fallback');
       setDeceasedData({ full_name: 'Unknown Deceased' });
     }
   };
@@ -1347,7 +1368,7 @@ const DocumentsPage = () => {
       filtered = filtered.filter(doc => 
         doc.originalName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.detectedType?.toLowerCase().includes(searchTerm.toLowerCase())
+        doc.mimeType?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -1360,10 +1381,14 @@ const DocumentsPage = () => {
 
   const handleDownload = async (document) => {
     try {
-      const documentId = document.documentId;
-      const downloadUrl = `${BASE_API}/documents/download/${documentId}`;
+      const downloadUrl = `${BASE_API}/documents/download/${document.documentId}`;
       
-      const response = await fetch(downloadUrl);
+      const response = await fetch(downloadUrl, {
+        headers: {
+          'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+        }
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -1387,8 +1412,7 @@ const DocumentsPage = () => {
 
   const handleView = async (document) => {
     try {
-      const documentId = document.documentId;
-      const viewUrl = `${BASE_API}/documents/download/${documentId}`;
+      const viewUrl = `${BASE_API}/documents/download/${document.documentId}`;
       
       if (document.mimeType === 'application/pdf' || document.originalName?.toLowerCase().endsWith('.pdf')) {
         setViewingDocument({
@@ -1397,7 +1421,12 @@ const DocumentsPage = () => {
         });
         toast.info(`Opening PDF document...`);
       } else {
-        const response = await fetch(viewUrl);
+        const response = await fetch(viewUrl, {
+          headers: {
+            'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+          }
+        });
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1419,10 +1448,14 @@ const DocumentsPage = () => {
 
   const handlePrint = async (document) => {
     try {
-      const documentId = document.documentId;
-      const printUrl = `${BASE_API}/documents/download/${documentId}`;
+      const printUrl = `${BASE_API}/documents/download/${document.documentId}`;
       
-      const response = await fetch(printUrl);
+      const response = await fetch(printUrl, {
+        headers: {
+          'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+        }
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -1431,7 +1464,6 @@ const DocumentsPage = () => {
       const objectUrl = URL.createObjectURL(blob);
       
       if (document.mimeType === 'application/pdf') {
-        // For PDFs, use an iframe for better printing
         const printFrame = document.createElement('iframe');
         printFrame.style.display = 'none';
         printFrame.src = objectUrl;
@@ -1447,7 +1479,6 @@ const DocumentsPage = () => {
           }, 500);
         };
       } else {
-        // For other file types
         const printWindow = window.open(objectUrl, '_blank');
         
         if (printWindow) {
@@ -1457,7 +1488,7 @@ const DocumentsPage = () => {
               setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
             } catch (printError) {
               console.error('Print error:', printError);
-              toast.error('Failed to print document. Please try printing from the opened window.');
+              toast.error('Failed to print document.');
             }
           };
         } else {
@@ -1494,22 +1525,20 @@ const DocumentsPage = () => {
       setIsSharing(true);
 
       try {
-        const documentId = sharingDocument.documentId;
-        
-        const shareResponse = await axios.post(`${BASE_API}/documents/share`, {
-          documentId: documentId,
+        await axios.post(`${BASE_API}/documents/share`, {
+          documentId: sharingDocument.documentId,
           recipientEmail: shareForm.email,
           method: shareForm.method,
           message: shareForm.message,
           documentName: sharingDocument.originalName
+        }, {
+          headers: {
+            'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+          }
         });
 
-        if (shareResponse.data.success) {
-          toast.success(`Document shared successfully via email to ${shareForm.email}`);
-          setSharingDocument(null);
-        } else {
-          toast.error('Failed to share document');
-        }
+        toast.success(`Document shared successfully via email to ${shareForm.email}`);
+        setSharingDocument(null);
       } catch (error) {
         console.error('Error sharing document:', error);
         toast.error('Failed to share document: ' + error.message);
@@ -1517,29 +1546,27 @@ const DocumentsPage = () => {
         setIsSharing(false);
       }
     } else if (shareForm.method === 'whatsapp') {
-      // For WhatsApp, trigger the native share dialog with the PDF file
       setIsSharing(true);
 
       try {
-        const documentId = sharingDocument.documentId;
-        const downloadUrl = `${BASE_API}/documents/download/${documentId}`;
+        const downloadUrl = `${BASE_API}/documents/download/${sharingDocument.documentId}`;
         
-        // Download the file
-        const response = await fetch(downloadUrl);
+        const response = await fetch(downloadUrl, {
+          headers: {
+            'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+          }
+        });
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const blob = await response.blob();
-        
-        // Create a File object from the blob
         const file = new File([blob], sharingDocument.originalName, { 
           type: sharingDocument.mimeType || 'application/pdf' 
         });
         
-        // Check if Web Share API is available
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          // Use Web Share API for native sharing
           await navigator.share({
             files: [file],
             title: sharingDocument.originalName,
@@ -1548,10 +1575,7 @@ const DocumentsPage = () => {
           
           toast.success('Document shared via native share dialog');
         } else {
-          // Fallback: Create a shareable link
           const objectUrl = URL.createObjectURL(blob);
-          
-          // Create a temporary download link
           const link = document.createElement('a');
           link.href = objectUrl;
           link.download = sharingDocument.originalName;
@@ -1559,7 +1583,6 @@ const DocumentsPage = () => {
           
           toast.info('Document downloaded. You can now share it via WhatsApp.');
           
-          // Clean up
           setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         }
         
@@ -1578,11 +1601,14 @@ const DocumentsPage = () => {
       try {
         setIsDeleting(true);
         
-        await axios.delete(`${BASE_API}/documents/${documentId}`, {
-          data: { deletedBy: getUsername() }
+        await axios.delete(`${BASE_API}/documents/${deceasedId}/${documentId}`, {
+          data: { deletedBy: getUsername() },
+          headers: {
+            'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+          }
         });
-        setDocuments(prev => prev.filter(doc => doc.documentId !== documentId));
         
+        setDocuments(prev => prev.filter(doc => doc.documentId !== documentId));
         toast.success('Document deleted successfully');
       } catch (error) {
         console.error('Error deleting document:', error);
@@ -1590,6 +1616,52 @@ const DocumentsPage = () => {
       } finally {
         setIsDeleting(false);
       }
+    }
+  };
+
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files[0] || e.target.files?.[0];
+    if (file) {
+      setUploadingFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadingFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('document', uploadingFile);
+      formData.append('category', uploadCategory);
+      formData.append('uploadedBy', getUsername());
+
+      await axios.post(
+        `${BASE_API}/documents/${deceasedId}/upload`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
+          }
+        }
+      );
+
+      toast.success('Document uploaded successfully');
+      setShowUploadModal(false);
+      setUploadingFile(null);
+      setUploadCategory('General');
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast.error('Failed to upload document: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -1602,6 +1674,12 @@ const DocumentsPage = () => {
 
   const closeShareModal = () => {
     setSharingDocument(null);
+  };
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadingFile(null);
+    setUploadCategory('General');
   };
 
   const getFileIcon = (filename, mimeType) => {
@@ -1726,6 +1804,15 @@ const DocumentsPage = () => {
             <ArrowLeft size={window.innerWidth < 768 ? 14 : 16} />
             Back
           </BackButton>
+          <ActionButton
+            onClick={() => setShowUploadModal(true)}
+            bgColor="#10b981"
+            hoverColor="#059669"
+            title="Upload Document"
+          >
+            <Plus size={16} />
+            {window.innerWidth >= 768 && 'Upload'}
+          </ActionButton>
         </div>
       </Header>
 
@@ -1831,20 +1918,24 @@ const DocumentsPage = () => {
           <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
             <FileText size={40} color="#cbd5e1" />
             <h3 style={{ color: '#64748b', margin: '1rem 0 0.5rem 0' }}>
-              {documents.length === 0 ? 'No Documents' : 'No Matching Documents'}
+              {documents.length === 0 ? 'No Documents Found' : 'No Matching Documents'}
             </h3>
+            {documents.length === 0 && (
+              <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                Click the "Upload" button to add documents for this deceased.
+              </p>
+            )}
           </div>
         )}
       </ContentCard>
 
-      {/* Enhanced PDF Viewer for PDF files */}
+      {/* PDF Viewer */}
       {viewingDocument && (viewingDocument.mimeType === 'application/pdf' || viewingDocument.originalName?.toLowerCase().endsWith('.pdf')) ? (
         <EnhancedPDFViewer 
           document={viewingDocument}
           onClose={closeViewer}
         />
       ) : viewingDocument ? (
-        // Regular document viewer for non-PDF files
         <ModalOverlay onClick={closeViewer}>
           <ModalContent onClick={(e) => e.stopPropagation()} size="large">
             <ModalHeader>
@@ -1953,7 +2044,7 @@ const DocumentsPage = () => {
                   </FormGroup>
                 ) : (
                   <FormGroup>
-                    <FormLabel>Phone Number (for WhatsApp)</FormLabel>
+                    <FormLabel>Phone Number</FormLabel>
                     <FormInput
                       type="tel"
                       placeholder="+254712345678"
@@ -1995,6 +2086,82 @@ const DocumentsPage = () => {
                   )}
                 </SubmitButton>
               </ShareForm>
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Upload Document Modal */}
+      {showUploadModal && (
+        <ModalOverlay onClick={closeUploadModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>
+                <Upload size={18} style={{ marginRight: '0.4rem' }} />
+                Upload Document
+              </ModalTitle>
+              <CloseButton onClick={closeUploadModal}>
+                <X size={18} />
+              </CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <FormGroup>
+                <FormLabel>Category</FormLabel>
+                <FormSelect
+                  value={uploadCategory}
+                  onChange={(e) => setUploadCategory(e.target.value)}
+                >
+                  {Object.keys(CATEGORY_COLORS).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </FormSelect>
+              </FormGroup>
+
+              <UploadArea
+                onDrop={handleFileDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => document.getElementById('fileInput').click()}
+                className={uploadingFile ? 'dragover' : ''}
+              >
+                <input
+                  id="fileInput"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => setUploadingFile(e.target.files[0])}
+                  style={{ display: 'none' }}
+                />
+                <Upload size={40} color="#3b82f6" style={{ marginBottom: '0.5rem' }} />
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+                  {uploadingFile ? uploadingFile.name : 'Drag & drop file here or click to browse'}
+                </p>
+                <p style={{ margin: '0.5rem 0 0 0', color: '#94a3b8', fontSize: '0.75rem' }}>
+                  Supported: PDF, Word, Images (max 50MB)
+                </p>
+              </UploadArea>
+
+              <UploadButton 
+                onClick={handleUpload} 
+                disabled={!uploadingFile || isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <div style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      border: '2px solid transparent', 
+                      borderTop: '2px solid white', 
+                      borderRadius: '50%', 
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    Upload Document
+                  </>
+                )}
+              </UploadButton>
             </ModalBody>
           </ModalContent>
         </ModalOverlay>

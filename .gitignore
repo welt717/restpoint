@@ -2,3 +2,8 @@
 !BackendApi/
 !FrontendClient/
 node_modules
+.npm-cache/
+node_modules/
+.cache/
+dist/
+build/

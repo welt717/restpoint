@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './modules/landing/LandingPage';
 import OnboardingFlow from './modules/onboarding/OnboardingFlow';
 import LoginPage from './components/auth/login';
 import AppRouter from './routes/AppRouter';
+import { initManifest } from './services/manifestService';
 
 // Simple wrapper for backward compatibility
 const App = () => {
+  // Initialize dynamic manifest on app load
+  useEffect(() => {
+    initManifest();
+  }, []);
+
   // Check if we're using subdomain routing or path-based routing
   const hostname = window.location.hostname;
   const isTenantSubdomain = hostname !== 'localhost' && 

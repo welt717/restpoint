@@ -1,6 +1,8 @@
 // components/InvoiceDashboard.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/client';
+import { ENDPOINTS } from '../../api/endpoints';
+import { safeMap, hasData, safeNumber } from '../../utils/safeRender';
 import DeceasedFinancialTable from './deceasedFainancialTable';
 import DeceasedFinancialDetails from './deceasedFainancialDetails';
 import InvoiceForm from './invoiceForm';
@@ -13,8 +15,6 @@ import {
   Search, Calendar, ArrowLeft, BarChart3, CheckCircle,
   AlertCircle, RefreshCw, Printer, FilePlus, TrendingUp
 } from 'lucide-react';
-
-const API_BASE_URL = 'http://localhost:5000/api/v1/restpoint';
 
 const InvoiceManager = () => {
   const [view, setView] = useState('overview');
@@ -61,23 +61,25 @@ const InvoiceManager = () => {
   const loadDeceasedWithFinancials = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/invoices/all-deceased`);
-      const deceasedData = response.data.data || [];
-      setDeceasedList(deceasedData);
+      const response = await api.get(ENDPOINTS.INVOICE.LIST + '/all-deceased');
+      const deceasedData = response.data?.data || [];
+      setDeceasedList(Array.isArray(deceasedData) ? deceasedData : []);
 
-      const totalRevenue = deceasedData.reduce((sum, d) => sum + parseFloat(d.total_payments || 0), 0);
-      const totalBalance = deceasedData.reduce((sum, d) => sum + parseFloat(d.balance || 0), 0);
+      const totalRevenue = deceasedData.reduce((sum, d) => sum + safeNumber(d.total_payments, 0), 0);
+      const totalBalance = deceasedData.reduce((sum, d) => sum + safeNumber(d.balance, 0), 0);
       
       setStats({
         totalDeceased: deceasedData.length,
         totalRevenue,
         totalBalance,
-        paidInvoices: deceasedData.filter(d => parseFloat(d.balance || 0) <= 0).length,
-        pendingInvoices: deceasedData.filter(d => parseFloat(d.balance || 0) > 0).length
+        paidInvoices: deceasedData.filter(d => safeNumber(d.balance, 0) <= 0).length,
+        pendingInvoices: deceasedData.filter(d => safeNumber(d.balance, 0) > 0).length
       });
     } catch (error) {
       console.error('Error loading deceased financials:', error);
-      showToast('error', 'Error loading data');
+      showToast('error', 'Error loading data: ' + (error.message || 'Unknown error'));
+      // Set empty state on error to prevent crashes
+      setDeceasedList([]);
     } finally {
       setLoading(false);
     }
@@ -87,12 +89,12 @@ const InvoiceManager = () => {
     setSelectedDeceased(deceased);
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/invoices/deceased-financials/${deceased.id}`);
-      setFinancialDetails(response.data.data);
+      const response = await api.get(ENDPOINTS.INVOICE.DETAIL(deceased.id));
+      setFinancialDetails(response.data?.data || null);
       setView('details');
     } catch (error) {
       console.error('Error loading financial details:', error);
-      showToast('error', 'Error loading details');
+      showToast('error', 'Error loading details: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -101,13 +103,13 @@ const InvoiceManager = () => {
   const handleViewInvoice = async (invoiceId) => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/invoices/${invoiceId}`);
-      setSelectedInvoice(response.data.data);
+      const response = await api.get(ENDPOINTS.INVOICE.DETAIL(invoiceId));
+      setSelectedInvoice(response.data?.data || null);
       setView('view-invoice');
       showToast('info', 'Invoice loaded');
     } catch (error) {
       console.error('Error loading invoice:', error);
-      showToast('error', 'Error loading invoice');
+      showToast('error', 'Error loading invoice: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -116,13 +118,13 @@ const InvoiceManager = () => {
   const handleEditInvoice = async (invoiceId) => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/invoices/${invoiceId}`);
-      setSelectedInvoice(response.data.data);
+      const response = await api.get(ENDPOINTS.INVOICE.DETAIL(invoiceId));
+      setSelectedInvoice(response.data?.data || null);
       setView('edit-invoice');
       showToast('info', 'Ready to edit invoice');
     } catch (error) {
       console.error('Error loading invoice for editing:', error);
-      showToast('error', 'Error loading invoice');
+      showToast('error', 'Error loading invoice: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -130,20 +132,20 @@ const InvoiceManager = () => {
 
   const handleUpdateInvoice = async (invoiceData) => {
     try {
-      await axios.put(`${API_BASE_URL}/invoices/${invoiceData.id}`, invoiceData);
+      await api.put(ENDPOINTS.INVOICE.UPDATE(invoiceData.id), invoiceData);
       showToast('success', 'Invoice updated successfully!');
       
       // Refresh the financial details if we're in details view
       if (selectedDeceased) {
-        const response = await axios.get(`${API_BASE_URL}/invoices/deceased-financials/${selectedDeceased.id}`);
-        setFinancialDetails(response.data.data);
+        const response = await api.get(ENDPOINTS.INVOICE.DETAIL(selectedDeceased.id));
+        setFinancialDetails(response.data?.data || null);
       }
       
       setView('details');
       setSelectedInvoice(null);
     } catch (error) {
       console.error('Error updating invoice:', error);
-      showToast('error', 'Error updating invoice');
+      showToast('error', 'Error updating invoice: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -160,50 +162,50 @@ const InvoiceManager = () => {
       });
 
       if (result.isConfirmed) {
-        await axios.delete(`${API_BASE_URL}/invoices/${invoiceId}`);
+        await api.delete(ENDPOINTS.INVOICE.DELETE(invoiceId));
         showToast('success', 'Invoice deleted successfully!');
         
         // Refresh the financial details
         if (selectedDeceased) {
-          const response = await axios.get(`${API_BASE_URL}/invoices/deceased-financials/${selectedDeceased.id}`);
-          setFinancialDetails(response.data.data);
+          const response = await api.get(ENDPOINTS.INVOICE.DETAIL(selectedDeceased.id));
+          setFinancialDetails(response.data?.data || null);
         }
       }
     } catch (error) {
       console.error('Error deleting invoice:', error);
-      showToast('error', 'Error deleting invoice');
+      showToast('error', 'Error deleting invoice: ' + (error.message || 'Unknown error'));
     }
   };
 
   const handleCreatePayment = async (paymentData) => {
     try {
-      await axios.post(`${API_BASE_URL}/invoices/payment`, paymentData);
+      await api.post(ENDPOINTS.INVOICE.PAY(paymentData.invoiceId), paymentData);
       await loadDeceasedWithFinancials();
       if (selectedDeceased) {
-        const response = await axios.get(`${API_BASE_URL}/invoices/deceased-financials/${selectedDeceased.id}`);
-        setFinancialDetails(response.data.data);
+        const response = await api.get(ENDPOINTS.INVOICE.DETAIL(selectedDeceased.id));
+        setFinancialDetails(response.data?.data || null);
       }
       setView('details');
       showToast('success', 'Payment recorded successfully!');
     } catch (error) {
       console.error('Error creating payment:', error);
-      showToast('error', 'Error recording payment');
+      showToast('error', 'Error recording payment: ' + (error.message || 'Unknown error'));
     }
   };
 
   const handleAddExtraCharge = async (chargeData) => {
     try {
-      await axios.post(`${API_BASE_URL}/invoices/extra-charge`, chargeData);
+      await api.post(ENDPOINTS.INVOICE.CREATE, chargeData);
       await loadDeceasedWithFinancials();
       if (selectedDeceased) {
-        const response = await axios.get(`${API_BASE_URL}/invoices/deceased-financials/${selectedDeceased.id}`);
-        setFinancialDetails(response.data.data);
+        const response = await api.get(ENDPOINTS.INVOICE.DETAIL(selectedDeceased.id));
+        setFinancialDetails(response.data?.data || null);
       }
       setView('details');
       showToast('success', 'Extra charge added successfully!');
     } catch (error) {
       console.error('Error adding charge:', error);
-      showToast('error', 'Error adding charge');
+      showToast('error', 'Error adding charge: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -221,7 +223,7 @@ const InvoiceManager = () => {
 
   const handleDownloadInvoice = async (invoiceId) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/invoices/${invoiceId}/download`, {
+      const response = await api.get(ENDPOINTS.INVOICE.PDF(invoiceId), {
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -235,7 +237,7 @@ const InvoiceManager = () => {
       showToast('success', 'Invoice downloaded successfully!');
     } catch (error) {
       console.error('Error downloading invoice:', error);
-      showToast('error', 'Error downloading invoice');
+      showToast('error', 'Error downloading invoice: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -879,13 +881,13 @@ const InvoiceManager = () => {
             onCancel={handleBackToOverview}
             onSubmit={async (invoiceData) => {
               try {
-                await axios.post(`${API_BASE_URL}/invoices`, invoiceData);
+                await api.post(ENDPOINTS.INVOICE.CREATE, invoiceData);
                 await loadDeceasedWithFinancials();
                 setView('overview');
                 showToast('success', 'Invoice created successfully!');
               } catch (error) {
                 console.error('Error creating invoice:', error);
-                showToast('error', 'Error creating invoice');
+                showToast('error', 'Error creating invoice: ' + (error.message || 'Unknown error'));
               }
             }}
           />

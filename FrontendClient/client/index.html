@@ -2,12 +2,300 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>RestPoint MMS | #1 Mortuary Management Software for Funeral Homes</title>
+    <meta name="title" content="RestPoint MMS - Complete Mortuary Management System for Funeral Homes" />
+    <meta name="description" content="Streamline funeral home operations with RestPoint MMS. Manage deceased records, autopsy reports, embalming, cold storage, billing, and more. Trusted by funeral homes across Africa." />
+    <meta name="keywords" content="mortuary management software, funeral home management system, deceased management software, autopsy reporting system, embalming management, cold room management, funeral home software, mortuary system, body tracking system, funeral management platform, death certificate management, morgue software, funeral home CRM, mortuary inventory system, burial management software" />
+    <meta name="author" content="RestPoint MMS" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    
+    <!-- Geo-targeting for African market -->
+    <meta name="geo.region" content="KE" />
+    <meta name="geo.placename" content="Nairobi" />
+    <meta name="distribution" content="global" />
+    <meta name="rating" content="General" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e293b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RestPoint MMS" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="RestPoint Mortuary Management" />
+    
+    <!-- Open Graph / Social Media (Improved) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://restpoint.com/" />
+    <meta property="og:title" content="RestPoint MMS - The Ultimate Mortuary Management Software for Funeral Homes" />
+    <meta property="og:description" content="Transform your funeral home operations with RestPoint MMS. Complete mortuary management solution including deceased tracking, autopsy reports, embalming, cold storage, and financial management." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:alt" content="RestPoint Mortuary Management System Dashboard" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="RestPoint Mortuary Management System" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://restpoint.com/" />
+    <meta name="twitter:title" content="RestPoint MMS - Mortuary Management Software" />
+    <meta name="twitter:description" content="Complete funeral home management system. Manage deceased records, autopsy, embalming, cold storage, and billing in one platform." />
+    <meta name="twitter:image" content="/twitter-image.png" />
+    <meta name="twitter:site" content="@restpoint" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://restpoint.com/" />
+    
+    <!-- Manifest Link -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/android-icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/android-icon-512x512.png" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet" />
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" as="image" href="/logo.png" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "RestPoint Mortuary Management System",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Windows, Mac, Linux, Android, iOS",
+      "description": "Complete mortuary management software for funeral homes, mortuaries, and funeral service providers. Features include deceased tracking, autopsy reporting, embalming management, cold storage, body checkout, invoice management, and financial reporting.",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "156",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free trial available"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "RestPoint Technologies",
+        "url": "https://restpoint.com"
+      },
+      "featureList": "Deceased Records Management, Autopsy Reporting, Embalming Management, Cold Room Management, Body Checkout System, Invoice Management, Financial Reporting, Document Management, Search Functionality, Analytics Dashboard",
+      "screenshot": "https://restpoint.com/screenshots/dashboard.png",
+      "softwareVersion": "2.0",
+      "datePublished": "2024-01-01",
+      "sameAs": [
+        "https://www.facebook.com/restpoint",
+        "https://twitter.com/restpoint",
+        "https://www.linkedin.com/company/restpoint"
+      ]
+    }
+    </script>
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://restpoint.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Mortuary Management Software",
+          "item": "https://restpoint.com/mortuary-software"
+        }
+      ]
+    }
+    </script>
+    
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "RestPoint Technologies",
+      "url": "https://restpoint.com",
+      "logo": "https://restpoint.com/logo.png",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+254-700-000-000",
+        "contactType": "customer service",
+        "areaServed": "KE",
+        "availableLanguage": ["English", "Swahili"]
+      },
+      "sameAs": [
+        "https://www.facebook.com/restpoint",
+        "https://twitter.com/restpoint",
+        "https://www.linkedin.com/company/restpoint"
+      ]
+    }
+    </script>
+    
+    <title>RestPoint MMS | #1 Mortuary Management Software for Funeral Homes</title>
+    
+    <style>
+      /* Critical CSS for initial render */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      
+      #root {
+        min-height: 100vh;
+      }
+      
+      /* Loading animation */
+      .loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        z-index: 9999;
+      }
+      
+      .loader {
+        width: 60px;
+        height: 60px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Hide loading when app is ready */
+      .loading-container.hide {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="loading-container" id="loading-container">
+        <div class="loader"></div>
+      </div>
+    </div>
+    
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Analytics (Google Analytics 4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    
+    <!-- Remove loading screen after app loads -->
+    <script>
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const loadingContainer = document.getElementById('loading-container');
+          if (loadingContainer) {
+            loadingContainer.classList.add('hide');
+            setTimeout(() => {
+              if (loadingContainer.parentNode) {
+                loadingContainer.style.display = 'none';
+              }
+            }, 300);
+          }
+        }, 500);
+      });
+      
+      // Service Worker Registration for PWA
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service_worker.js')
+            .then((registration) => {
+              console.log('✅ ServiceWorker registered successfully:', registration.scope);
+            })
+            .catch((error) => {
+              console.error('❌ ServiceWorker registration failed:', error);
+            });
+        });
+      }
+      
+      // Before Install Prompt handling for PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('📱 PWA install prompt available');
+        
+        // Dispatch custom event for React to listen to
+        window.dispatchEvent(new CustomEvent('pwa-install-ready', { detail: { deferredPrompt: e } }));
+      });
+      
+      // Handle offline status
+      window.addEventListener('online', () => {
+        console.log('🟢 App is online');
+        window.dispatchEvent(new CustomEvent('app-online'));
+      });
+      
+      window.addEventListener('offline', () => {
+        console.log('🔴 App is offline');
+        window.dispatchEvent(new CustomEvent('app-offline'));
+      });
+    </script>
   </body>
 </html>

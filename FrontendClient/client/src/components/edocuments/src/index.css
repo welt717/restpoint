@@ -1,0 +1,19 @@
+:root {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #f1f5f9;
+}
+
+#root {
+  min-height: 100vh;
+}

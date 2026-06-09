@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   Truck,
   Calendar,
@@ -18,55 +16,34 @@ import {
   Fuel,
   Gauge,
   Settings,
-  Navigation,
-  ExternalLink,
-  Search,
+  Send,
+  WhatsApp,
+  Users,
   Clock,
   AlertCircle,
+  Navigation,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
-// Clean color palette
+// Unified Color Palette (matching deceasedDetailPage.jsx)
 const Colors = {
   cardBg: '#FFFFFF',
   textPrimary: '#1F2937',
   textSecondary: '#6B7280',
   borderColor: '#E5E7EB',
   shadow: '0 4px 12px rgba(0,0,0,0.05)',
-  accentBlue: '#1e293b',
-  dangerRed: '#EF4444',
-  successGreen: '#10B981',
-  buttonBg: '#2563EB',
-  buttonHover: '#1D4ED8',
-  progressBg: '#F3F4F6',
-  hoverGray: '#F9FAFB',
-};
-
-// TomTom API Configuration (keep as backup)
-const TOMTOM_API_KEY = 'vrEBolWtMhzwL9icvdOoNQlHbghvBE1F';
-const API_BASE_URL = 'http://localhost:5000/api/v1/restpoint';
-
-// Free Routing APIs
-const OSRM_API = 'https://router.project-osrm.org/route/v1/driving';
-const NOMINATIM_API = 'https://nominatim.openstreetmap.org/search';
-
-// MapLibre Configuration
-const MAP_CONFIG = {
-  // Free OpenStreetMap-based styles
-  styles: {
-    standard: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-    dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-    voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-  },
-  defaultCenter: [36.8219, -1.2921], // [lng, lat] for MapLibre (Note: reverse order!)
-  defaultZoom: 13,
-};
-
-const DEFAULT_MORTUARY = {
-  lat: -1.2921,
-  lon: 36.8219,
-  address: 'LEE FUNERAL SERVICES',
+  accentBlue: '#3b82f6',
+  primaryDark: '#0f172a',
+  dangerRed: '#dc2626',
+  successGreen: '#10b981',
+  buttonBg: '#3b82f6',
+  buttonHover: '#2563eb',
+  progressBg: '#f8fafc',
+  hoverGray: '#f1f5f9',
+  whatsappGreen: '#25D366',
+  warningOrange: '#f59e0b',
+  accentPurple: '#8b5cf6',
 };
 
 // --- Styled Components ---
@@ -74,30 +51,32 @@ const DispatchContainer = styled.div`
   background-color: ${Colors.cardBg};
   border-radius: 1rem;
   padding: 1.5rem;
-  box-shadow: ${Colors.shadow};
-  border: 1px solid ${Colors.borderColor};
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border: 1px solid #f1f5f9;
 `;
 
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   flex-wrap: wrap;
   gap: 1rem;
 `;
 
 const Title = styled.h4`
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0;
-  color: ${Colors.textPrimary};
+  color: ${Colors.primaryDark};
 
   svg {
     color: ${Colors.accentBlue};
+    width: 18px;
+    height: 18px;
   }
 `;
 
@@ -113,10 +92,38 @@ const StyledButton = styled.button`
   background-color: ${Colors.buttonBg};
   color: white;
   transition: all 0.2s ease;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 
   &:hover {
     background-color: ${Colors.buttonHover};
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  &:disabled {
+    background-color: ${Colors.textSecondary};
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const WhatsAppButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background-color: ${Colors.whatsappGreen};
+  color: white;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+
+  &:hover {
+    background-color: #1ebe57;
+    transform: translateY(-1px);
   }
 
   &:disabled {
@@ -128,14 +135,15 @@ const StyledButton = styled.button`
 const TripCard = styled.div`
   background: ${Colors.cardBg};
   border: 1px solid ${Colors.borderColor};
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   padding: 1.25rem;
   margin-bottom: 1rem;
   transition: all 0.2s ease;
 
   &:hover {
-    box-shadow: ${Colors.shadow};
-    border-color: ${Colors.accentBlue}40;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: ${Colors.accentBlue}30;
+    transform: translateY(-2px);
   }
 `;
 
@@ -149,12 +157,12 @@ const TripHeader = styled.div`
 `;
 
 const TripLabel = styled.div`
-  background: ${Colors.accentBlue};
+  background: ${Colors.primaryDark};
   color: white;
   padding: 0.3rem 1rem;
   border-radius: 2rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -165,38 +173,89 @@ const DateBadge = styled.div`
   align-items: center;
   gap: 0.4rem;
   color: ${Colors.textSecondary};
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   background: ${Colors.progressBg};
-  padding: 0.3rem 1rem;
+  padding: 0.3rem 0.8rem;
   border-radius: 2rem;
+`;
+
+const StatusBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+  background: ${(props) => {
+    switch (props.status) {
+      case 'Assigned':
+        return '#DBEAFE';
+      case 'In Transit':
+        return '#FEF3C7';
+      case 'Completed':
+        return '#D1FAE5';
+      case 'Cancelled':
+        return '#FEE2E2';
+      default:
+        return Colors.progressBg;
+    }
+  }};
+  color: ${(props) => {
+    switch (props.status) {
+      case 'Assigned':
+        return '#1E40AF';
+      case 'In Transit':
+        return '#92400E';
+      case 'Completed':
+        return '#059669';
+      case 'Cancelled':
+        return '#DC2626';
+      default:
+        return Colors.textSecondary;
+    }
+  }};
 `;
 
 const VehicleInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   margin: 1rem 0;
   flex-wrap: wrap;
 `;
 
 const VehicleTag = styled.span`
   background: ${Colors.progressBg};
-  padding: 0.2rem 0.8rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 1rem;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: ${Colors.textSecondary};
   display: flex;
   align-items: center;
   gap: 0.3rem;
 `;
 
+const DriverInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: ${Colors.textPrimary};
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: #dbeafe20;
+  border-radius: 0.5rem;
+  border-left: 3px solid ${Colors.accentBlue};
+`;
+
 const RouteInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   background: ${Colors.progressBg};
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   margin: 1rem 0;
   flex-wrap: wrap;
 `;
@@ -204,8 +263,8 @@ const RouteInfo = styled.div`
 const Location = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  gap: 0.4rem;
+  font-size: 0.85rem;
   color: ${Colors.textPrimary};
 `;
 
@@ -216,13 +275,13 @@ const Arrow = styled.span`
 
 const StatsRow = styled.div`
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   margin: 1rem 0;
   flex-wrap: wrap;
 `;
 
 const Stat = styled.div`
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: ${Colors.textSecondary};
 
   strong {
@@ -234,10 +293,10 @@ const Stat = styled.div`
 
 const FuelEstimate = styled.div`
   background: #10b98110;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   margin: 0.75rem 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #059669;
   display: flex;
   align-items: center;
@@ -251,6 +310,7 @@ const ActionButtons = styled.div`
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px solid ${Colors.borderColor};
+  flex-wrap: wrap;
 `;
 
 const ActionButton = styled.button`
@@ -262,7 +322,7 @@ const ActionButton = styled.button`
   border-radius: 0.5rem;
   background: white;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   transition: all 0.2s ease;
 
   &:hover {
@@ -284,7 +344,7 @@ const ModalOverlay = styled.div`
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  padding: 1rem;
+  backdrop-filter: blur(4px);
 `;
 
 const ModalContent = styled.div`
@@ -292,7 +352,7 @@ const ModalContent = styled.div`
   padding: 2rem;
   border-radius: 1rem;
   width: 90%;
-  max-width: 1100px;
+  max-width: 950px;
   max-height: 90vh;
   overflow-y: auto;
   display: grid;
@@ -301,7 +361,6 @@ const ModalContent = styled.div`
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    padding: 1rem;
   }
 `;
 
@@ -320,7 +379,6 @@ const CloseButton = styled.button`
   border: none;
   cursor: pointer;
   color: ${Colors.textSecondary};
-  padding: 0.25rem;
 
   &:hover {
     color: ${Colors.dangerRed};
@@ -328,15 +386,14 @@ const CloseButton = styled.button`
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 1.25rem;
-  position: relative;
+  margin-bottom: 1rem;
 `;
 
 const Label = styled.label`
   display: block;
   font-weight: 500;
   margin-bottom: 0.4rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: ${Colors.textPrimary};
 `;
 
@@ -345,8 +402,23 @@ const Input = styled.input`
   padding: 0.6rem 0.75rem;
   border: 1px solid ${Colors.borderColor};
   border-radius: 0.5rem;
-  font-size: 0.95rem;
-  transition: border-color 0.2s;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${Colors.accentBlue};
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid ${Colors.borderColor};
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  background: white;
 
   &:focus {
     outline: none;
@@ -355,15 +427,16 @@ const Input = styled.input`
 `;
 
 const MapContainer = styled.div`
+  height: 250px;
   width: 100%;
-  height: 400px;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid ${Colors.borderColor};
+  margin-bottom: 1rem;
   position: relative;
-  background: ${Colors.progressBg};
 
-  .maplibregl-map {
+  iframe {
+    border: none;
     width: 100%;
     height: 100%;
   }
@@ -380,15 +453,14 @@ const SearchResults = styled.div`
   max-height: 200px;
   overflow-y: auto;
   z-index: 100;
-  box-shadow: ${Colors.shadow};
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 `;
 
 const SearchResultItem = styled.div`
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.75rem;
   cursor: pointer;
   border-bottom: 1px solid ${Colors.borderColor};
-  font-size: 0.9rem;
-  transition: background 0.2s;
+  font-size: 0.85rem;
 
   &:hover {
     background: ${Colors.hoverGray};
@@ -409,7 +481,7 @@ const SummaryBox = styled.div`
     margin: 0.5rem 0;
     display: flex;
     justify-content: space-between;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
   }
 
   strong {
@@ -428,122 +500,252 @@ const RateInput = styled.div`
     padding: 0.6rem 0.75rem;
     border: 1px solid ${Colors.borderColor};
     border-radius: 0.5rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   span {
     color: ${Colors.textSecondary};
     font-weight: 500;
+    font-size: 0.85rem;
   }
 `;
 
-const MapControls = styled.div`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
+const RouteStep = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-`;
-
-const MapButton = styled.button`
-  background: white;
-  border: 1px solid ${Colors.borderColor};
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
   font-size: 0.8rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
+  color: ${Colors.textSecondary};
 
-  &:hover {
-    background: ${Colors.hoverGray};
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const RouteInfoBox = styled.div`
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  display: flex;
-  gap: 1.5rem;
-  font-size: 0.9rem;
-  flex-wrap: wrap;
-  justify-content: center;
-
-  span {
+  .step-number {
+    background: ${Colors.accentBlue};
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
   }
 
-  strong {
-    color: ${Colors.accentBlue};
-  }
-`;
-
-const LoadingOverlay = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 1rem 2rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid ${Colors.borderColor};
-  border-radius: 0.5rem;
-  font-size: 0.95rem;
-  background: white;
-  
-  &:focus {
-    outline: none;
-    border-color: ${Colors.accentBlue};
+  .step-text {
+    flex: 1;
   }
 `;
 
-// Main Component
-const DispatchSection = ({ deceasedId, onUpdate }) => {
+// ============================================
+// OPEN SOURCE ROUTING UTILITIES (No TomTom)
+// ============================================
+
+// Default mortuary location (Lee Funeral Services, Nairobi)
+const DEFAULT_MORTUARY = {
+  lat: -1.2921,
+  lon: 36.8219,
+  address: 'LEE FUNERAL SERVICES',
+};
+
+// Nominatim (OSM) API for geocoding - FREE
+const NOMINATIM_API = 'https://nominatim.openstreetmap.org';
+
+// OSRM (Open Source Routing Machine) for routing - FREE
+const OSRM_API = 'https://router.project-osrm.org/route/v1';
+
+// OpenStreetMap static map embed
+const getOSMMapUrl = (originLat, originLon, destLat, destLon) => {
+  if (!destLat || !destLon) {
+    return `https://www.openstreetmap.org/export/embed.html?bbox=36.7,-1.4,37.0,-1.2&layer=mapnik&marker=${originLat},${originLon}`;
+  }
+
+  const minLon = Math.min(originLon, destLon) - 0.05;
+  const maxLon = Math.max(originLon, destLon) + 0.05;
+  const minLat = Math.min(originLat, destLat) - 0.05;
+  const maxLat = Math.max(originLat, destLat) + 0.05;
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${minLon},${minLat},${maxLon},${maxLat}&layer=mapnik&marker=${originLat},${originLon}&marker=${destLat},${destLon}`;
+};
+
+// Geocode address using Nominatim
+const geocodeAddress = async (query) => {
+  if (query.length < 3) return [];
+
+  try {
+    const response = await fetch(
+      `${NOMINATIM_API}/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ke&limit=5&addressdetails=1`,
+      {
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'MontenzumaDispatch/1.0',
+        },
+      }
+    );
+    const data = await response.json();
+    return data.map((result) => ({
+      lat: parseFloat(result.lat),
+      lon: parseFloat(result.lon),
+      address: result.display_name,
+      name: result.name || result.display_name,
+      type: result.type,
+    }));
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return [];
+  }
+};
+
+// Calculate route using OSRM (Open Source Routing Machine)
+const calculateRouteOSRM = async (originLat, originLon, destLat, destLon) => {
+  try {
+    const response = await fetch(
+      `${OSRM_API}/driving/${originLon},${originLat};${destLon},${destLat}?overview=full&geometries=geojson&steps=true`
+    );
+    const data = await response.json();
+
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      const distanceKm = (route.distance / 1000).toFixed(1);
+      const timeInSeconds = route.duration;
+      const hours = Math.floor(timeInSeconds / 3600);
+      const minutes = Math.floor((timeInSeconds % 3600) / 60);
+      const timeString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+      // Extract turn-by-turn directions
+      const legs = route.legs[0];
+      const steps = legs.steps.map((step, index) => ({
+        instruction: step.maneuver.modifier || step.maneuver.type || 'Continue',
+        name: step.name || '',
+        distance: (step.distance / 1000).toFixed(2),
+        duration: Math.round(step.duration / 60),
+      }));
+
+      return {
+        distance: parseFloat(distanceKm),
+        travelTime: timeString,
+        travelTimeMinutes: Math.round(timeInSeconds / 60),
+        steps: steps.slice(0, 10),
+        geometry: route.geometry,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('OSRM routing error:', error);
+    const straightDistance = calculateHaversineDistance(originLat, originLon, destLat, destLon);
+    const roadDistance = (straightDistance * 1.3).toFixed(1);
+    const estimatedTime = Math.round((parseFloat(roadDistance) / 50) * 60);
+
+    return {
+      distance: parseFloat(roadDistance),
+      travelTime: estimatedTime > 60
+        ? `${Math.floor(estimatedTime / 60)}h ${estimatedTime % 60}m`
+        : `${estimatedTime}m`,
+      travelTimeMinutes: estimatedTime,
+      steps: [],
+      geometry: null,
+      isEstimated: true,
+    };
+  }
+};
+
+// Haversine formula for distance calculation
+const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// ============================================
+// VEHICLE/DRIVER OPTIMIZATION
+// ============================================
+
+const calculateVehicleScore = (vehicle, tripRequirements) => {
+  let score = 100;
+  if (vehicle.status !== 'Available') score -= 50;
+  if (vehicle.currentLocation) {
+    const distance = calculateHaversineDistance(
+      vehicle.currentLocation.lat,
+      vehicle.currentLocation.lon,
+      DEFAULT_MORTUARY.lat,
+      DEFAULT_MORTUARY.lon
+    );
+    score -= Math.min(distance * 2, 30);
+  }
+  if (tripRequirements.vehicleType && vehicle.type !== tripRequirements.vehicleType) {
+    score -= 20;
+  }
+  if (tripRequirements.distance > 100 && vehicle.fuelEfficiency) {
+    score += Math.min(vehicle.fuelEfficiency, 10);
+  }
+  return Math.max(score, 0);
+};
+
+const optimizeDispatch = (availableVehicles, tripData) => {
+  const scoredVehicles = availableVehicles.map((vehicle) => ({
+    ...vehicle,
+    score: calculateVehicleScore(vehicle, tripData),
+  }));
+  scoredVehicles.sort((a, b) => b.score - a.score);
+  return scoredVehicles;
+};
+
+// ============================================
+// WHATSAPP NOTIFICATION SERVICE
+// ============================================
+
+const sendDispatchWhatsApp = async (driverPhone, dispatchData) => {
+  try {
+    const API_BASE_URL = 'http://localhost:8000';
+    const response = await axios.post(
+      `${API_BASE_URL}/api/v1/restpoint/dispatch/send-whatsapp`,
+      {
+        phone: driverPhone,
+        message: `🚐 *NEW DISPATCH ASSIGNMENT*\n\n` +
+          `📍 *Route:* ${dispatchData.origin} → ${dispatchData.destination}\n` +
+          `📅 *Date:* ${dispatchData.date}\n` +
+          `⏰ *Time:* ${dispatchData.time}\n` +
+          `🚗 *Vehicle:* ${dispatchData.vehiclePlate}\n` +
+          `📏 *Distance:* ${dispatchData.distance} km (one way)\n` +
+          `⏱️ *Est. Time:* ${dispatchData.travelTime}\n\n` +
+          `Please confirm receipt. Drive safely! 🙏`,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('WhatsApp dispatch notification failed:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
+const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
   const { id } = useParams();
+  const effectiveDeceasedId = deceasedId || id;
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState('System');
   const [trips, setTrips] = useState([]);
-
-  // Map Refs
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const markersRef = useRef([]);
-  const routeSourceRef = useRef(null);
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [routeSteps, setRouteSteps] = useState([]);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
 
   // Form state
   const [tripName, setTripName] = useState('');
@@ -551,19 +753,21 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
   const [vehicleName, setVehicleName] = useState('');
   const [vehicleCC, setVehicleCC] = useState('');
   const [dispatchDate, setDispatchDate] = useState('');
+  const [dispatchTime, setDispatchTime] = useState('');
   const [negotiatedPrice, setNegotiatedPrice] = useState('');
   const [ratePerKm, setRatePerKm] = useState(100);
+  const [driverName, setDriverName] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
+  const [driverContact, setDriverContact] = useState('');
 
   // Location state
   const [destination, setDestination] = useState('');
   const [destinationLat, setDestinationLat] = useState(null);
   const [destinationLon, setDestinationLon] = useState(null);
   const [distance, setDistance] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
   const [travelTime, setTravelTime] = useState(null);
-  const [isMapLoading, setIsMapLoading] = useState(false);
-  const [mapStyle, setMapStyle] = useState('standard');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Calculations
   const [fuelCost, setFuelCost] = useState(null);
@@ -571,8 +775,22 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
   const [transportCost, setTransportCost] = useState(null);
   const [totalCost, setTotalCost] = useState(null);
 
-  // Debounce timer for search
-  const searchTimeout = useRef(null);
+  // Centralized API base URL
+  const API_BASE_URL = 'http://localhost:8000';
+
+  // Helper to get tenant slug
+  const getTenantSlug = () => {
+    return localStorage.getItem('tenantSlug') || 
+           localStorage.getItem('tenant_slug') ||
+           (() => {
+             try {
+               const user = JSON.parse(localStorage.getItem('user') || '{}');
+               return user.tenantSlug || user.tenant?.slug || 'default';
+             } catch {
+               return 'default';
+             }
+           })();
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('username');
@@ -580,427 +798,160 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
   }, []);
 
   useEffect(() => {
-    fetchTrips();
-  }, [deceasedId, id]);
-
-  // Initialize map when modal opens
-  useEffect(() => {
-    if (showModal && mapContainer.current) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        initializeMap();
-      }, 100);
+    if (effectiveDeceasedId) {
+      fetchTrips();
+      fetchAvailableVehicles();
     }
+  }, [effectiveDeceasedId]);
 
-    // Cleanup on modal close
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
-  }, [showModal, mapStyle]);
-
-  const initializeMap = () => {
-    if (!mapContainer.current || map.current) return;
-
-    try {
-      map.current = new maplibregl.Map({
-        container: mapContainer.current,
-        style: MAP_CONFIG.styles[mapStyle] || MAP_CONFIG.styles.standard,
-        center: MAP_CONFIG.defaultCenter,
-        zoom: MAP_CONFIG.defaultZoom,
-        attributionControl: true,
-      });
-
-      // Add navigation controls
-      map.current.addControl(new maplibregl.NavigationControl(), 'top-left');
-      map.current.addControl(new maplibregl.ScaleControl({
-        maxWidth: 100,
-        unit: 'metric'
-      }), 'bottom-left');
-
-      // Add mortuary marker
-      map.current.on('load', () => {
-        addMarker(
-          DEFAULT_MORTUARY.lat,
-          DEFAULT_MORTUARY.lon,
-          '#10B981',
-          '🏠',
-          'Mortuary'
-        );
-
-        // If editing with existing destination, load route
-        if (destinationLat && destinationLon) {
-          addMarker(destinationLat, destinationLon, '#EF4444', '📍', 'Destination');
-          fetchRoute(DEFAULT_MORTUARY.lat, DEFAULT_MORTUARY.lon, destinationLat, destinationLon);
-        }
-      });
-
-      // Handle map errors gracefully
-      map.current.on('error', (e) => {
-        console.error('Map error:', e);
-      });
-    } catch (error) {
-      console.error('Error initializing map:', error);
-    }
-  };
-
-  const clearMarkers = () => {
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-  };
-
-  const addMarker = (lat, lng, color, emoji, label) => {
-    if (!map.current) return;
-
-    // Create custom marker element
-    const el = document.createElement('div');
-    el.className = 'custom-marker';
-    el.innerHTML = `
-      <div style="
-        background: ${color};
-        color: white;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        border: 2px solid white;
-      ">
-        <span style="font-size: 16px;">${emoji}</span>
-        <span>${label}</span>
-      </div>
-    `;
-
-    // Remove existing marker at similar position (avoid duplicates)
-    const marker = new maplibregl.Marker({ 
-      element: el, 
-      anchor: 'bottom',
-      offset: [0, -10]
-    })
-      .setLngLat([lng, lat])
-      .addTo(map.current);
-
-    markersRef.current.push(marker);
-    return marker;
-  };
-
-  const fetchRoute = async (originLat, originLon, destLat, destLon) => {
-    if (!map.current) return;
-    
-    setIsMapLoading(true);
-    
-    try {
-      // Using OSRM (free, no API key needed)
-      const url = `${OSRM_API}/${originLon},${originLat};${destLon},${destLat}?overview=full&geometries=geojson&steps=true&alternatives=false`;
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch route');
-      }
-      
-      const data = await response.json();
-
-      if (data.routes?.[0]) {
-        const route = data.routes[0];
-        const distanceKm = (route.distance / 1000).toFixed(1);
-        const durationMinutes = Math.round(route.duration / 60);
-        const hours = Math.floor(durationMinutes / 60);
-        const minutes = durationMinutes % 60;
-        const timeString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-
-        setDistance(parseFloat(distanceKm));
-        setTravelTime(timeString);
-
-        // Draw route on map
-        drawRoute(route.geometry);
-        
-        // Fit map to show entire route
-        fitMapToRoute(route.geometry);
-      }
-    } catch (error) {
-      console.error('Route error:', error);
-      
-      // Fallback to Haversine distance calculation
-      const dist = calculateDistance(originLat, originLon, destLat, destLon);
-      setDistance(Math.round(dist * 10) / 10);
-      
-      // Estimate time (assume average 40km/h)
-      const estimatedMinutes = Math.round((dist / 40) * 60);
-      const hours = Math.floor(estimatedMinutes / 60);
-      const minutes = estimatedMinutes % 60;
-      setTravelTime(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
-      
-      // Draw straight line as fallback
-      drawStraightLine(originLat, originLon, destLat, destLon);
-    } finally {
-      setIsMapLoading(false);
-    }
-  };
-
-  const drawRoute = (geometry) => {
-    if (!map.current) return;
-
-    // Remove existing route
-    if (map.current.getLayer('route-line')) {
-      map.current.removeLayer('route-line');
-    }
-    if (map.current.getLayer('route-line-bg')) {
-      map.current.removeLayer('route-line-bg');
-    }
-    if (map.current.getSource('route')) {
-      map.current.removeSource('route');
-    }
-
-    // Add route source
-    map.current.addSource('route', {
-      type: 'geojson',
-      data: {
-        type: 'Feature',
-        properties: {},
-        geometry: geometry,
-      },
-    });
-
-    // Add background (wider) line
-    map.current.addLayer({
-      id: 'route-line-bg',
-      type: 'line',
-      source: 'route',
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': '#2563EB',
-        'line-width': 8,
-        'line-opacity': 0.2,
-      },
-    });
-
-    // Add main route line with dash effect (Waze-like)
-    map.current.addLayer({
-      id: 'route-line',
-      type: 'line',
-      source: 'route',
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': '#2563EB',
-        'line-width': 4,
-        'line-opacity': 0.8,
-      },
-    });
-
-    routeSourceRef.current = geometry;
-  };
-
-  const drawStraightLine = (lat1, lon1, lat2, lon2) => {
-    if (!map.current) return;
-
-    const geometry = {
-      type: 'LineString',
-      coordinates: [[lon1, lat1], [lon2, lat2]]
-    };
-
-    drawRoute(geometry);
-    fitMapToRoute(geometry);
-  };
-
-  const fitMapToRoute = (geometry) => {
-    if (!map.current || !geometry || !geometry.coordinates) return;
-
-    try {
-      const coordinates = geometry.coordinates;
-      const bounds = coordinates.reduce((bounds, coord) => {
-        return bounds.extend([coord[0], coord[1]]);
-      }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-
-      map.current.fitBounds(bounds, {
-        padding: { top: 50, bottom: 50, left: 50, right: 50 },
-        maxZoom: 15,
-        duration: 1000,
-      });
-    } catch (error) {
-      console.error('Error fitting map to route:', error);
-    }
-  };
-
-  // Haversine formula for distance calculation (fallback)
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const searchLocation = useCallback(async (query) => {
-    if (query.length < 3) {
-      setSearchResults([]);
+  const fetchTrips = async () => {
+    if (!effectiveDeceasedId) {
+      setTrips([]);
       return;
     }
-
-    // Clear previous timeout
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
-    }
-
-    // Debounce search
-    searchTimeout.current = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        // Using Nominatim (free, rate-limited to 1 request/sec)
-        const response = await fetch(
-          `${NOMINATIM_API}?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=ke&addressdetails=1`,
-          {
-            headers: {
-              'User-Agent': 'FuneralServiceApp/1.0', // Required by Nominatim
-            },
-          }
-        );
-        
-        if (!response.ok) {
-          throw new Error('Search failed');
+    try {
+      const tenantSlug = getTenantSlug();
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/restpoint/dispatch/${effectiveDeceasedId}`,
+        {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+          },
         }
-        
-        const data = await response.json();
-        setSearchResults(data || []);
-      } catch (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
-        
-        // Fallback to TomTom if Nominatim fails
-        try {
-          const response = await fetch(
-            `https://api.tomtom.com/search/2/search/${encodeURIComponent(query)}.json?key=${TOMTOM_API_KEY}&countrySet=KE&limit=5`
-          );
-          const data = await response.json();
-          const formattedResults = (data.results || []).map(r => ({
-            display_name: r.address.freeformAddress,
-            lat: r.position.lat,
-            lon: r.position.lon,
-          }));
-          setSearchResults(formattedResults);
-        } catch (fallbackError) {
-          console.error('Fallback search error:', fallbackError);
-        }
-      } finally {
-        setIsSearching(false);
+      );
+      if (response.data.success || response.data) {
+        setTrips(response.data.data || response.data.trips || []);
+      } else {
+        setTrips([]);
       }
-    }, 300);
-  }, []);
+    } catch (error) {
+      console.error('Error fetching trips:', error);
+      setTrips([]);
+    }
+  };
 
-  const handleDestinationSelect = (result) => {
-    const address = result.display_name;
-    const lat = parseFloat(result.lat);
-    const lon = parseFloat(result.lon);
-
-    setDestination(address);
-    setDestinationLat(lat);
-    setDestinationLon(lon);
-    setSearchResults([]);
-
-    // Update map
-    if (map.current) {
-      // Clear old markers except mortuary
-      markersRef.current.forEach(marker => {
-        const pos = marker.getLngLat();
-        if (pos.lat !== DEFAULT_MORTUARY.lon || pos.lng !== DEFAULT_MORTUARY.lat) {
-          marker.remove();
+  const fetchAvailableVehicles = async () => {
+    try {
+      const tenantSlug = getTenantSlug();
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/restpoint/vehicles/available`,
+        {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+          },
         }
-      });
-
-      addMarker(lat, lon, '#EF4444', '📍', 'Destination');
-      fetchRoute(DEFAULT_MORTUARY.lat, DEFAULT_MORTUARY.lon, lat, lon);
-    } else {
-      // Fallback distance calculation
-      const dist = calculateDistance(DEFAULT_MORTUARY.lat, DEFAULT_MORTUARY.lon, lat, lon);
-      setDistance(Math.round(dist * 10) / 10);
-      const estimatedMinutes = Math.round((dist / 40) * 60);
-      const hours = Math.floor(estimatedMinutes / 60);
-      const minutes = estimatedMinutes % 60;
-      setTravelTime(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
-    }
-  };
-
-  const openInWaze = () => {
-    if (destinationLat && destinationLon) {
-      const url = `https://waze.com/ul?ll=${destinationLat},${destinationLon}&navigate=yes`;
-      window.open(url, '_blank');
-    }
-  };
-
-  const openInGoogleMaps = () => {
-    if (destinationLat && destinationLon) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLon}`;
-      window.open(url, '_blank');
+      );
+      if (response.data.success || response.data) {
+        setAvailableVehicles(response.data.data || response.data.vehicles || []);
+      } else {
+        setAvailableVehicles([]);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      setAvailableVehicles([]);
     }
   };
 
   const calculateFuelCost = useCallback(() => {
-    if (!vehicleCC || !distance) return null;
+    if (!vehicleCC || !distance || vehicleCC <= 0 || distance <= 0) return null;
     const cc = parseFloat(vehicleCC);
-    let kmPerLiter;
+    if (isNaN(cc) || cc <= 0) return null;
     
-    if (cc < 1500) kmPerLiter = 15;
-    else if (cc < 2000) kmPerLiter = 12;
-    else if (cc < 3000) kmPerLiter = 9;
-    else if (cc < 4000) kmPerLiter = 6;
-    else kmPerLiter = 4;
-
+    let kmPerLiter = cc < 1500 ? 15 : cc < 2000 ? 12 : cc < 3000 ? 9 : cc < 4000 ? 6 : 4;
     const roundTrip = distance * 2;
     const fuelNeeded = roundTrip / kmPerLiter;
-    
     return {
       liters: Math.round(fuelNeeded * 10) / 10,
-      cost: Math.round(fuelNeeded * 180), // KES 180 per liter
+      cost: Math.round(fuelNeeded * 180),
     };
   }, [vehicleCC, distance]);
 
   const calculateTransportCost = useCallback(() => {
-    if (!distance || !ratePerKm) return null;
+    if (!distance || distance <= 0 || !ratePerKm || ratePerKm <= 0) return null;
     const roundTrip = distance * 2;
     return Math.round(roundTrip * ratePerKm);
   }, [distance, ratePerKm]);
 
   useEffect(() => {
-    if (distance) {
-      const fuel = calculateFuelCost();
-      if (fuel) {
-        setFuelEstimate(fuel.liters);
-        setFuelCost(fuel.cost);
+    if (distance && distance > 0) {
+      try {
+        const fuel = calculateFuelCost();
+        if (fuel) {
+          setFuelEstimate(fuel.liters);
+          setFuelCost(fuel.cost);
+        } else {
+          setFuelEstimate(null);
+          setFuelCost(null);
+        }
+
+        const transport = calculateTransportCost();
+        setTransportCost(transport);
+
+        const total = (fuel?.cost || 0) + (transport || 0);
+        setTotalCost(total);
+      } catch (error) {
+        console.error('Error calculating costs:', error);
+        setFuelCost(null);
+        setTransportCost(null);
+        setTotalCost(0);
       }
-
-      const transport = calculateTransportCost();
-      setTransportCost(transport);
-
-      const total = (fuel?.cost || 0) + (transport || 0);
-      setTotalCost(total);
+    } else {
+      setFuelCost(null);
+      setTransportCost(null);
+      setTotalCost(0);
+      setFuelEstimate(null);
     }
   }, [distance, vehicleCC, ratePerKm, calculateFuelCost, calculateTransportCost]);
 
-  const fetchTrips = async () => {
+  const searchLocation = async (query) => {
+    if (query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    const results = await geocodeAddress(query);
+    setSearchResults(results);
+    setIsSearching(false);
+  };
+
+  const calculateRoute = async (lat, lon) => {
+    setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/dispatch/${deceasedId || id}`);
-      if (response.data.success) {
-        setTrips(response.data.data);
+      const routeData = await calculateRouteOSRM(
+        DEFAULT_MORTUARY.lat,
+        DEFAULT_MORTUARY.lon,
+        lat,
+        lon
+      );
+
+      if (routeData) {
+        setDistance(routeData.distance);
+        setTravelTime(routeData.travelTime);
+        setRouteSteps(routeData.steps);
       }
     } catch (error) {
-      console.error('Error fetching trips:', error);
+      console.error('Route calculation error:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleDestinationSelect = (result) => {
+    setDestination(result.address);
+    setDestinationLat(result.lat);
+    setDestinationLon(result.lon);
+    setSearchResults([]);
+    calculateRoute(result.lat, result.lon);
+  };
+
+  const getMapUrl = () => {
+    return getOSMMapUrl(
+      DEFAULT_MORTUARY.lat,
+      DEFAULT_MORTUARY.lon,
+      destinationLat,
+      destinationLon
+    );
   };
 
   const resetForm = () => {
@@ -1009,8 +960,12 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
     setVehicleName('');
     setVehicleCC('');
     setDispatchDate('');
+    setDispatchTime('');
     setNegotiatedPrice('');
     setRatePerKm(100);
+    setDriverName('');
+    setDriverPhone('');
+    setDriverContact('');
     setDestination('');
     setDestinationLat(null);
     setDestinationLon(null);
@@ -1020,119 +975,131 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
     setFuelEstimate(null);
     setTransportCost(null);
     setTotalCost(null);
-    setSearchResults([]);
+    setRouteSteps([]);
     setEditingId(null);
-    
-    // Clear map markers and routes
-    if (map.current) {
-      clearMarkers();
-      
-      // Remove route layers
-      ['route-line', 'route-line-bg'].forEach(layer => {
-        if (map.current.getLayer(layer)) {
-          map.current.removeLayer(layer);
-        }
-      });
-      
-      if (map.current.getSource('route')) {
-        map.current.removeSource('route');
-      }
-      
-      // Reset map view
-      map.current.flyTo({
-        center: MAP_CONFIG.defaultCenter,
-        zoom: MAP_CONFIG.defaultZoom,
-      });
-      
-      // Re-add mortuary marker
-      addMarker(DEFAULT_MORTUARY.lat, DEFAULT_MORTUARY.lon, '#10B981', '🏠', 'Mortuary');
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!vehiclePlate || !dispatchDate || !destinationLat || !destinationLon) {
-      setMessage('Please fill in all required fields');
+    setIsLoading(true);
+    setMessage('');
+
+    if (!vehiclePlate || !dispatchDate || !driverName || !driverContact || !destinationLat) {
+      setMessage('Error: Please fill in all required fields');
+      setIsLoading(false);
       return;
     }
-    
-    setIsLoading(true);
 
     const fuel = calculateFuelCost();
 
     const tripData = {
-      deceased_id: deceasedId || id,
+      deceased_id: effectiveDeceasedId,
       vehicle_plate: vehiclePlate,
       vehicle_name: vehicleName || null,
       vehicle_cc: vehicleCC || null,
+      driver_name: driverName,
+      driver_contact: driverContact,
+      driver_phone: driverPhone,
       dispatch_date: dispatchDate,
+      dispatch_time: dispatchTime || '09:00',
       destination_address: destination,
       destination_lat: destinationLat,
       destination_lon: destinationLon,
-      distance_km: distance,
+      distance_km: distance || null,
       round_trip_km: distance ? distance * 2 : null,
-      travel_time: travelTime,
-      fuel_estimate: fuelEstimate,
-      fuel_cost: fuelCost,
-      rate_per_km: ratePerKm,
-      total_cost: totalCost,
+      travel_time: travelTime || null,
+      fuel_estimate: fuelEstimate || null,
+      fuel_cost: fuelCost || null,
+      rate_per_km: ratePerKm || 100,
+      total_cost: totalCost || null,
       negotiated_price: negotiatedPrice || null,
       trip_name: tripName || `Trip ${new Date(dispatchDate).toLocaleDateString()}`,
       origin_address: DEFAULT_MORTUARY.address,
       origin_lat: DEFAULT_MORTUARY.lat,
       origin_lon: DEFAULT_MORTUARY.lon,
       created_by: username,
+      status: 'Assigned',
     };
 
     try {
+      const tenantSlug = getTenantSlug();
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-tenant-slug': tenantSlug,
+      };
+
       if (editingId) {
-        await axios.put(`${API_BASE_URL}/dispatch/${editingId}`, tripData);
+        await axios.put(
+          `${API_BASE_URL}/api/v1/restpoint/dispatch/${editingId}`,
+          tripData,
+          { headers }
+        );
         setMessage('Trip updated successfully!');
       } else {
-        await axios.post(`${API_BASE_URL}/dispatch`, tripData);
-        setMessage('Trip added successfully!');
+        await axios.post(
+          `${API_BASE_URL}/api/v1/restpoint/dispatch`,
+          tripData,
+          { headers }
+        );
+        setMessage('Trip created successfully!');
       }
 
       setTimeout(async () => {
         setShowModal(false);
         resetForm();
         await fetchTrips();
+        await fetchAvailableVehicles();
         onUpdate?.();
         setMessage('');
       }, 1500);
     } catch (error) {
-      console.error('Error saving trip:', error);
-      setMessage('Error: ' + (error.response?.data?.error || error.message));
+      console.error('Dispatch error:', error);
+      setMessage('Error: ' + (error.response?.data?.error || error.message || 'Failed to save dispatch'));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async (tripId) => {
-    if (window.confirm('Are you sure you want to delete this trip?')) {
-      try {
-        await axios.delete(`${API_BASE_URL}/dispatch/${tripId}`);
-        await fetchTrips();
-        onUpdate?.();
-        setMessage('Trip deleted successfully');
-      } catch (error) {
-        console.error('Error deleting trip:', error);
-        setMessage('Error deleting trip');
-      }
+    if (!window.confirm('Are you sure you want to delete this trip?')) {
+      return;
+    }
+    try {
+      const tenantSlug = getTenantSlug();
+      await axios.delete(
+        `${API_BASE_URL}/api/v1/restpoint/dispatch/${tripId}`,
+        {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+          },
+        }
+      );
+      await fetchTrips();
+      await fetchAvailableVehicles();
+      onUpdate?.();
+      setMessage('Trip deleted successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Delete error:', error);
+      setMessage('Error deleting trip: ' + (error.response?.data?.message || error.message));
+      setTimeout(() => setMessage(''), 3000);
     }
   };
 
   const handleEdit = (trip) => {
     setEditingId(trip.dispatch_id);
-    setTripName(trip.trip_name || '');
-    setVehiclePlate(trip.vehicle_plate || '');
-    setVehicleName(trip.vehicle_name || '');
-    setVehicleCC(trip.vehicle_cc || '');
-    setDispatchDate(trip.dispatch_date?.split('T')[0] || '');
+    setTripName(trip.trip_name);
+    setVehiclePlate(trip.vehicle_plate);
+    setVehicleName(trip.vehicle_name);
+    setVehicleCC(trip.vehicle_cc);
+    setDispatchDate(trip.dispatch_date?.split('T')[0]);
+    setDispatchTime(trip.dispatch_time || '09:00');
     setNegotiatedPrice(trip.negotiated_price || '');
     setRatePerKm(trip.rate_per_km || 100);
-    setDestination(trip.destination_address || '');
+    setDriverName(trip.driver_name || '');
+    setDriverPhone(trip.driver_phone || '');
+    setDriverContact(trip.driver_contact || '');
+    setDestination(trip.destination_address);
     setDestinationLat(trip.destination_lat);
     setDestinationLon(trip.destination_lon);
     setDistance(trip.distance_km);
@@ -1140,63 +1107,117 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
     setShowModal(true);
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount).replace('KES', 'KES ');
+  const sendToDriverWhatsApp = async (trip) => {
+    if (!trip.driver_contact) {
+      setMessage('No driver phone number available');
+      return;
+    }
+
+    setIsSendingWhatsApp(true);
+    try {
+      const dispatchData = {
+        origin: trip.origin_address || DEFAULT_MORTUARY.address,
+        destination: trip.destination_address,
+        date: new Date(trip.dispatch_date).toLocaleDateString(),
+        time: trip.dispatch_time || '09:00',
+        vehiclePlate: trip.vehicle_plate,
+        distance: trip.distance_km,
+        travelTime: trip.travel_time,
+      };
+
+      await sendDispatchWhatsApp(trip.driver_contact, dispatchData);
+      setMessage('✅ Dispatch details sent to driver via WhatsApp!');
+    } catch (error) {
+      console.error('WhatsApp error:', error);
+      setMessage('❌ Failed to send WhatsApp: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsSendingWhatsApp(false);
+      setTimeout(() => setMessage(''), 5000);
+    }
+  };
+
+  const autoAssignVehicle = () => {
+    if (availableVehicles.length === 0) {
+      setMessage('No available vehicles for auto-assignment');
+      return;
+    }
+
+    const optimized = optimizeDispatch(availableVehicles, {
+      distance: distance || 50,
+      vehicleType: 'hearse',
+    });
+
+    const bestVehicle = optimized[0];
+    if (bestVehicle) {
+      setVehiclePlate(bestVehicle.plate);
+      setVehicleName(bestVehicle.name);
+      setVehicleCC(bestVehicle.cc);
+      setDriverName(bestVehicle.driver_name);
+      setDriverPhone(bestVehicle.driver_phone);
+      setDriverContact(bestVehicle.driver_contact);
+      setMessage(`Auto-assigned: ${bestVehicle.plate} (Score: ${bestVehicle.score})`);
+      setTimeout(() => setMessage(''), 3000);
+    }
   };
 
   return (
     <DispatchContainer>
       <Header>
         <Title>
-          <Truck size={20} />
-          Vehicle Trips
+          <Truck size={18} />
+          Vehicle Dispatch
         </Title>
-        <StyledButton
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-        >
-          <PlusCircle size={16} /> Add Trip
-        </StyledButton>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {availableVehicles.length > 0 && (
+            <StyledButton
+              onClick={autoAssignVehicle}
+              style={{ backgroundColor: Colors.warningOrange }}
+            >
+              <Navigation size={14} /> Auto-Assign
+            </StyledButton>
+          )}
+          <StyledButton
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+          >
+            <PlusCircle size={14} /> New Dispatch
+          </StyledButton>
+        </div>
       </Header>
 
       {message && (
         <div
           style={{
-            padding: '0.75rem 1rem',
+            padding: '0.75rem',
             marginBottom: '1rem',
-            background: message.includes('Error') ? '#FEE2E2' : '#D1FAE5',
-            color: message.includes('Error') ? '#DC2626' : '#059669',
+            background: message.includes('Error') || message.includes('❌')
+              ? '#FEE2E2'
+              : message.includes('✅')
+              ? '#D1FAE5'
+              : '#DBEAFE',
+            color: message.includes('Error') || message.includes('❌')
+              ? '#DC2626'
+              : message.includes('✅')
+              ? '#059669'
+              : '#1E40AF',
             borderRadius: '0.5rem',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
+            fontSize: '0.85rem',
+            textAlign: 'center',
           }}
         >
-          {message.includes('Error') ? (
-            <AlertCircle size={16} />
-          ) : (
-            <CheckCircle size={16} />
-          )}
           {message}
         </div>
       )}
 
       {trips.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '3rem', 
-          color: Colors.textSecondary 
-        }}>
+        <div style={{ textAlign: 'center', padding: '2rem', color: Colors.textSecondary }}>
           <Truck size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-          <p>No trips added yet. Click "Add Trip" to get started.</p>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>No dispatch trips added yet</p>
+          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: Colors.textMuted }}>
+            Click "New Dispatch" to create your first trip
+          </p>
         </div>
       ) : (
         trips.map((trip) => {
@@ -1207,22 +1228,22 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
               <TripHeader>
                 <TripLabel>
                   <Route size={14} />
-                  {trip.trip_name || 'Trip'}
+                  {trip.trip_name || 'Dispatch Trip'}
                 </TripLabel>
-                <DateBadge>
-                  <Calendar size={14} />
-                  {new Date(trip.dispatch_date).toLocaleDateString('en-KE', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </DateBadge>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <StatusBadge status={trip.status || 'Assigned'}>
+                    {trip.status || 'Assigned'}
+                  </StatusBadge>
+                  <DateBadge>
+                    <Calendar size={14} />
+                    {new Date(trip.dispatch_date).toLocaleDateString()}
+                  </DateBadge>
+                </div>
               </TripHeader>
 
               <VehicleInfo>
                 <Car size={16} color={Colors.accentBlue} />
-                <strong style={{ fontSize: '0.95rem' }}>{trip.vehicle_plate}</strong>
+                <strong style={{ fontSize: '0.9rem' }}>{trip.vehicle_plate}</strong>
                 {trip.vehicle_name && (
                   <VehicleTag>
                     <Car size={12} /> {trip.vehicle_name}
@@ -1235,15 +1256,27 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
                 )}
               </VehicleInfo>
 
+              {trip.driver_name && (
+                <DriverInfo>
+                  <Users size={16} color={Colors.accentBlue} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{trip.driver_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: Colors.textSecondary }}>
+                      📞 {trip.driver_contact || trip.driver_phone}
+                    </div>
+                  </div>
+                </DriverInfo>
+              )}
+
               <RouteInfo>
                 <Location>
                   <MapPin size={14} color="#10B981" />
-                  <span>{trip.origin_address}</span>
+                  <span style={{ fontSize: '0.85rem' }}>{trip.origin_address}</span>
                 </Location>
                 <Arrow>→</Arrow>
                 <Location>
                   <MapPin size={14} color="#EF4444" />
-                  <span>{trip.destination_address}</span>
+                  <span style={{ fontSize: '0.85rem' }}>{trip.destination_address}</span>
                 </Location>
               </RouteInfo>
 
@@ -1276,34 +1309,35 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
                 <FuelEstimate>
                   <Fuel size={14} />
                   <span>
-                    Fuel: {trip.fuel_estimate}L ({formatCurrency(trip.fuel_cost)})
+                    Fuel: {trip.fuel_estimate}L (KES {trip.fuel_cost})
                   </span>
                 </FuelEstimate>
               )}
 
               <div
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginTop: '0.5rem'
-                }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}
               >
-                <Stat style={{ fontWeight: 500 }}>
+                <Stat style={{ fontWeight: 500, fontSize: '0.9rem' }}>
                   <DollarSign size={14} style={{ display: 'inline', marginRight: '2px' }} />
-                  {formatCurrency(displayPrice)}
+                  {displayPrice.toLocaleString()}
                   <span
-                    style={{ 
-                      color: Colors.textSecondary, 
-                      marginLeft: '4px', 
-                      fontSize: '0.8rem' 
-                    }}
+                    style={{ color: Colors.textSecondary, marginLeft: '4px', fontSize: '0.75rem' }}
                   >
                     {trip.negotiated_price ? '(final)' : '(est.)'}
                   </span>
                 </Stat>
 
                 <ActionButtons>
+                  {trip.driver_contact && (
+                    <WhatsAppButton onClick={() => sendToDriverWhatsApp(trip)} disabled={isSendingWhatsApp}>
+                      {isSendingWhatsApp ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <WhatsApp size={14} />
+                      )}
+                      Send to Driver
+                    </WhatsAppButton>
+                  )}
                   <ActionButton onClick={() => handleEdit(trip)}>
                     <Edit size={14} /> Edit
                   </ActionButton>
@@ -1317,67 +1351,36 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
         })
       )}
 
-      {/* Add/Edit Trip Modal */}
-      {showModal && (
-        <ModalOverlay>
-          <ModalContent>
-            <ModalHeader>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                {editingId ? 'Edit Trip' : 'New Trip'}
-              </h3>
-              <CloseButton
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-              >
-                <X size={20} />
-              </CloseButton>
-            </ModalHeader>
+      <ModalOverlay style={{ display: showModal ? 'flex' : 'none' }}>
+        <ModalContent>
+          <ModalHeader>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>
+              {editingId ? 'Edit Dispatch' : 'New Vehicle Dispatch'}
+            </h3>
+            <CloseButton
+              onClick={() => {
+                setShowModal(false);
+                resetForm();
+              }}
+            >
+              <X size={18} />
+            </CloseButton>
+          </ModalHeader>
 
-            {/* Left Column - Form Fields */}
-            <div>
-              <FormGroup>
-                <Label>Trip Name</Label>
-                <Input
-                  value={tripName}
-                  onChange={(e) => setTripName(e.target.value)}
-                  placeholder="e.g., Trip A, Funeral Day"
-                />
-              </FormGroup>
+          {/* Left Column - Trip Details */}
+          <div>
+            <FormGroup>
+              <Label>Trip Name</Label>
+              <Input
+                value={tripName}
+                onChange={(e) => setTripName(e.target.value)}
+                placeholder="e.g., Funeral Day, Body Collection"
+              />
+            </FormGroup>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <FormGroup>
-                <Label>Vehicle Plate *</Label>
-                <Input
-                  value={vehiclePlate}
-                  onChange={(e) => setVehiclePlate(e.target.value.toUpperCase())}
-                  placeholder="KCA 123A"
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Vehicle Name</Label>
-                <Input
-                  value={vehicleName}
-                  onChange={(e) => setVehicleName(e.target.value)}
-                  placeholder="e.g., Mercedes, Toyota"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Engine CC</Label>
-                <Input
-                  type="number"
-                  value={vehicleCC}
-                  onChange={(e) => setVehicleCC(e.target.value)}
-                  placeholder="e.g., 2000"
-                  min="0"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Trip Date *</Label>
+                <Label>Dispatch Date *</Label>
                 <Input
                   type="date"
                   value={dispatchDate}
@@ -1385,220 +1388,257 @@ const DispatchSection = ({ deceasedId, onUpdate }) => {
                   required
                 />
               </FormGroup>
-
               <FormGroup>
-                <Label>Rate per Kilometer (KES) *</Label>
-                <RateInput>
-                  <Input
-                    type="number"
-                    value={ratePerKm}
-                    onChange={(e) => setRatePerKm(parseFloat(e.target.value) || 0)}
-                    min="1"
-                    step="1"
-                    required
-                  />
-                  <span>/km</span>
-                </RateInput>
+                <Label>Dispatch Time</Label>
+                <Input
+                  type="time"
+                  value={dispatchTime}
+                  onChange={(e) => setDispatchTime(e.target.value)}
+                  defaultValue="09:00"
+                />
               </FormGroup>
+            </div>
 
-              <FormGroup style={{ position: 'relative' }}>
-                <Label>Destination *</Label>
-                <div style={{ position: 'relative' }}>
-                  <Input
-                    value={destination}
-                    onChange={(e) => {
-                      setDestination(e.target.value);
-                      searchLocation(e.target.value);
-                    }}
-                    placeholder="Search for a location..."
-                    required
-                  />
-                  {isSearching && (
-                    <Loader2 
-                      size={16} 
-                      style={{ 
-                        position: 'absolute', 
-                        right: '10px', 
-                        top: '50%', 
-                        transform: 'translateY(-50%)',
-                        animation: 'spin 1s linear infinite'
-                      }} 
-                    />
-                  )}
-                </div>
-                {searchResults.length > 0 && (
-                  <SearchResults>
-                    {searchResults.map((result, idx) => (
-                      <SearchResultItem 
-                        key={idx} 
-                        onClick={() => handleDestinationSelect(result)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <MapPin size={14} color={Colors.accentBlue} />
-                          <span>{result.display_name}</span>
-                        </div>
-                      </SearchResultItem>
-                    ))}
-                  </SearchResults>
-                )}
-              </FormGroup>
-
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <FormGroup>
-                <Label>Final Price (Optional)</Label>
+                <Label>Vehicle Plate *</Label>
+                <Input
+                  value={vehiclePlate}
+                  onChange={(e) => setVehiclePlate(e.target.value)}
+                  placeholder="KCA 123A"
+                  required
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Vehicle Name</Label>
+                <Input
+                  value={vehicleName}
+                  onChange={(e) => setVehicleName(e.target.value)}
+                  placeholder="e.g., Mercedes Hearse"
+                />
+              </FormGroup>
+            </div>
+
+            <FormGroup>
+              <Label>Engine CC</Label>
+              <Input
+                value={vehicleCC}
+                onChange={(e) => setVehicleCC(e.target.value)}
+                placeholder="e.g., 2000"
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Rate per Kilometer (KES) *</Label>
+              <RateInput>
                 <Input
                   type="number"
-                  value={negotiatedPrice}
-                  onChange={(e) => setNegotiatedPrice(e.target.value)}
-                  placeholder="Enter agreed price"
-                  min="0"
+                  value={ratePerKm}
+                  onChange={(e) => setRatePerKm(parseFloat(e.target.value) || 0)}
+                  min="1"
+                  step="1"
+                  required
                 />
-                <small
-                  style={{ 
-                    color: Colors.textSecondary, 
-                    marginTop: '0.25rem', 
-                    display: 'block',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  This will override the calculated estimate
-                </small>
+                <span>/km</span>
+              </RateInput>
+            </FormGroup>
+
+            {/* Driver Information */}
+            <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#dbeafe10', borderRadius: '0.5rem', border: `1px solid ${Colors.accentBlue}30` }}>
+              <Label style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Users size={14} /> Driver Information
+              </Label>
+
+              <FormGroup>
+                <Label>Driver Name *</Label>
+                <Input
+                  value={driverName}
+                  onChange={(e) => setDriverName(e.target.value)}
+                  placeholder="Driver full name"
+                  required
+                />
               </FormGroup>
-            </div>
 
-            {/* Right Column - Map */}
-            <div>
-              <div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                <Select 
-                  value={mapStyle}
-                  onChange={(e) => setMapStyle(e.target.value)}
-                  style={{ fontSize: '0.85rem', padding: '0.4rem' }}
-                >
-                  <option value="standard">Light Map</option>
-                  <option value="dark">Dark Map</option>
-                  <option value="voyager">Voyager Map</option>
-                </Select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <FormGroup>
+                  <Label>Driver Phone *</Label>
+                  <Input
+                    value={driverContact}
+                    onChange={(e) => setDriverContact(e.target.value)}
+                    placeholder="+2547XXXXXXXX"
+                    required
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <Label>Alt. Phone</Label>
+                  <Input
+                    value={driverPhone}
+                    onChange={(e) => setDriverPhone(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </FormGroup>
               </div>
-              
-              <MapContainer ref={mapContainer}>
-                {isMapLoading && (
-                  <LoadingOverlay>
-                    <Loader2 size={16} className="animate-spin" />
-                    Calculating route...
-                  </LoadingOverlay>
-                )}
-                
-                <MapControls>
-                  <MapButton onClick={openInWaze} title="Open in Waze">
-                    <ExternalLink size={14} /> Open in Waze
-                  </MapButton>
-                  <MapButton onClick={openInGoogleMaps} title="Open in Google Maps">
-                    <Navigation size={14} /> Open in Maps
-                  </MapButton>
-                </MapControls>
-                
-                {distance && (
-                  <RouteInfoBox>
-                    <span>
-                      <MapPin size={14} />
-                      <strong>{distance} km</strong>
-                    </span>
-                    <span>
-                      <Clock size={14} />
-                      <strong>{travelTime}</strong>
-                    </span>
-                    {totalCost && (
-                      <span>
-                        <DollarSign size={14} />
-                        <strong>{formatCurrency(totalCost)}</strong>
-                      </span>
-                    )}
-                  </RouteInfoBox>
-                )}
-              </MapContainer>
-
-              {distance && (
-                <SummaryBox>
-                  <p>
-                    <span>📍 One way:</span> <strong>{distance} km</strong>
-                  </p>
-                  <p>
-                    <span>🔄 Round trip:</span> <strong>{(distance * 2).toFixed(1)} km</strong>
-                  </p>
-                  <p>
-                    <span>⏱️ Travel time:</span> <strong>{travelTime}</strong>
-                  </p>
-                  <p>
-                    <span>💰 Transport rate:</span> <strong>KES {ratePerKm}/km</strong>
-                  </p>
-                  <p>
-                    <span>🚗 Transport cost:</span> <strong>{formatCurrency(transportCost || 0)}</strong>
-                  </p>
-                  {fuelCost && (
-                    <>
-                      <p>
-                        <span>⛽ Fuel needed:</span>{' '}
-                        <strong>{fuelEstimate}L</strong>
-                      </p>
-                      <p>
-                        <span>⛽ Fuel cost:</span>{' '}
-                        <strong>{formatCurrency(fuelCost)}</strong>
-                      </p>
-                      <p
-                        style={{
-                          borderTop: `1px solid ${Colors.borderColor}`,
-                          marginTop: '0.75rem',
-                          paddingTop: '0.75rem',
-                          fontWeight: 'bold',
-                          fontSize: '1.1rem',
-                        }}
-                      >
-                        <span>💰 Total estimate:</span>
-                        <strong style={{ color: Colors.successGreen }}>
-                          {formatCurrency(totalCost || 0)}
-                        </strong>
-                      </p>
-                    </>
-                  )}
-                </SummaryBox>
-              )}
-
-              <StyledButton
-                onClick={handleSubmit}
-                disabled={
-                  isLoading || !destinationLat || !vehiclePlate || !dispatchDate || !ratePerKm
-                }
-                style={{ width: '100%', marginTop: '1rem' }}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> 
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={16} /> {editingId ? 'Update' : 'Save'} Trip
-                  </>
-                )}
-              </StyledButton>
             </div>
-          </ModalContent>
-        </ModalOverlay>
-      )}
 
-      {/* Add CSS for animations */}
-      <style jsx>{`
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
+            <FormGroup style={{ position: 'relative', marginTop: '1rem' }}>
+              <Label>Destination *</Label>
+              <Input
+                value={destination}
+                onChange={(e) => {
+                  setDestination(e.target.value);
+                  searchLocation(e.target.value);
+                }}
+                placeholder="Search destination address"
+                required
+              />
+              {isSearching && (
+                <div style={{ position: 'absolute', right: '10px', top: '35px' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                </div>
+              )}
+              {searchResults.length > 0 && (
+                <SearchResults>
+                  {searchResults.map((result, idx) => (
+                    <SearchResultItem key={idx} onClick={() => handleDestinationSelect(result)}>
+                      <div style={{ fontWeight: 500 }}>{result.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: Colors.textSecondary }}>
+                        {result.address}
+                      </div>
+                    </SearchResultItem>
+                  ))}
+                </SearchResults>
+              )}
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Final Price (Optional)</Label>
+              <Input
+                type="number"
+                value={negotiatedPrice}
+                onChange={(e) => setNegotiatedPrice(e.target.value)}
+                placeholder="Enter agreed price"
+              />
+              <small
+                style={{ color: Colors.textSecondary, marginTop: '0.25rem', display: 'block', fontSize: '0.75rem' }}
+              >
+                This will override the calculated estimate
+              </small>
+            </FormGroup>
+          </div>
+
+          {/* Right Column - Map & Summary */}
+          <div>
+            <MapContainer>
+              <iframe src={getMapUrl()} title="Route Map" loading="lazy" />
+              {distance && routeSteps.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '10px',
+                  left: '10px',
+                  background: 'white',
+                  padding: '0.5rem',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.7rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}>
+                  🗺️ Powered by OpenStreetMap & OSRM
+                </div>
+              )}
+            </MapContainer>
+
+            {distance && (
+              <SummaryBox>
+                <p>
+                  <span>📍 One way:</span> <strong>{distance} km</strong>
+                </p>
+                <p>
+                  <span>🔄 Round trip:</span> <strong>{(distance * 2).toFixed(1)} km</strong>
+                </p>
+                <p>
+                  <span>⏱️ Travel time:</span> <strong>{travelTime}</strong>
+                </p>
+                <p>
+                  <span>💰 Transport ({ratePerKm}/km):</span> <strong>KES {transportCost}</strong>
+                </p>
+                {fuelCost && (
+                  <>
+                    <p>
+                      <span>⛽ Fuel:</span>{' '}
+                      <strong>
+                        {fuelEstimate}L (KES {fuelCost})
+                      </strong>
+                    </p>
+                    <p
+                      style={{
+                        borderTop: `1px solid ${Colors.borderColor}`,
+                        marginTop: '0.5rem',
+                        paddingTop: '0.5rem',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      <span>💰 Total estimate:</span>
+                      <strong style={{ color: Colors.successGreen }}>KES {totalCost}</strong>
+                    </p>
+                  </>
+                )}
+              </SummaryBox>
+            )}
+
+            {routeSteps.length > 0 && (
+              <div style={{
+                background: Colors.progressBg,
+                padding: '1rem',
+                border-radius: '0.5rem',
+                marginBottom: '1rem',
+                maxHeight: '150px',
+                overflowY: 'auto',
+              }}>
+                <Label style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Navigation size={14} /> Route Directions
+                </Label>
+                {routeSteps.map((step, index) => (
+                  <RouteStep key={index}>
+                    <span className="step-number">{index + 1}</span>
+                    <span className="step-text">
+                      {step.instruction} {step.name && `onto ${step.name}`}
+                      {step.distance && ` (${step.distance} km)`}
+                    </span>
+                  </RouteStep>
+                ))}
+              </div>
+            )}
+
+            <StyledButton
+              onClick={handleSubmit}
+              disabled={
+                isLoading ||
+                !destinationLat ||
+                !vehiclePlate ||
+                !dispatchDate ||
+                !ratePerKm ||
+                !driverName ||
+                !driverContact
+              }
+              style={{ width: '100%', marginTop: '1rem' }}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={16} /> {editingId ? 'Update' : 'Create'} Dispatch
+                </>
+               )}
+            </StyledButton>
+
+            <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#fef3c720', borderRadius: '0.5rem', fontSize: '0.75rem', color: Colors.textSecondary, border: `1px solid ${Colors.warningOrange}30` }}>
+              <AlertCircle size={14} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+              Routes calculated using OpenStreetMap & OSRM (free, open-source)
+            </div>
+          </div>
+        </ModalContent>
+      </ModalOverlay>
     </DispatchContainer>
   );
 };

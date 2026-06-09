@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Old files
+controllers/events.js
+controllers/events.js.bak
+routes/calenderRoutes.js
+routes/calenderRoutes.js.bak
+server.js.bak

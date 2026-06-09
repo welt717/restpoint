@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { FlaskConical, Save, X, FileText, User, AlertCircle, Plus, Trash2, Edit, Eye, Loader, ChevronDown, ChevronUp } from 'lucide-react';
+import { FlaskConical, Save, X, FileText, User, AlertCircle, Plus, Trash2, Edit, Eye, Loader, ChevronDown, ChevronUp, Download } from 'lucide-react';
+
+const API_GATEWAY_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const POSTMORTEM_BASE_URL = `${API_GATEWAY_URL}/api/v1/restpoint/deceased/postmortem`;
+
+const getTenantSlug = () => {
+  const localSlug = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
+  if (localSlug) return localSlug;
+
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    return user?.tenantSlug || user?.tenant?.slug || user?.tenant_slug || 'system_shared';
+  } catch {
+    return 'system_shared';
+  }
+};
 
 // Animation for opening/closing
 const slideDown = keyframes`
@@ -415,6 +430,30 @@ const LoadingOverlay = styled.div`
   border-radius: 12px;
 `;
 
+const DownloadStatusAlert = styled.div`
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: ${slideDown} 0.3s ease;
+  
+  &.success {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+  }
+  
+  &.error {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+`;
+
 const PostmortemInfoSection = ({ onSave, onCancel }) => {
   const { id: deceasedId } = useParams();
   const [isOpen, setIsOpen] = useState(false);
@@ -424,6 +463,11 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
     summary: '',
     findings: [],
     cause_of_death: '',
+    immediate_cause_of_death: '',
+    underlying_cause_of_death: '',
+    contributing_conditions: '',
+    manner_of_death: '',
+    requesting_authority: '',
     pathologist_type: 'staff',
     staff_username: '',
     external_name: '',
@@ -434,9 +478,11 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [downloadStatus, setDownloadStatus] = useState(null);
   const [existingPostmortem, setExistingPostmortem] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [currentOperation, setCurrentOperation] = useState('');
 
   const getCurrentUser = () => {
@@ -468,14 +514,21 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
     try {
       setIsLoading(true);
       setCurrentOperation("Loading postmortem data...");
+      const tenantSlug = getTenantSlug();
 
       const response = await fetch(
-        `http://localhost:8009/api/v1/restpoint/deceased/${deceasedId}`
+        `${POSTMORTEM_BASE_URL}/${deceasedId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-slug': tenantSlug
+          }
+        }
       );
 
       if (response.ok) {
         const data = await response.json();
-        const postmortemData = data?.data?.postmortem || data?.postmortem || null;
+        const postmortemData = data?.data || data?.postmortem || null;
 
         if (postmortemData) {
           console.log("✅ Found postmortem data:", postmortemData);
@@ -523,22 +576,27 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
     }
 
     let pathologistType = 'staff';
-    if (postmortem.external_name) {
+    if (postmortem.external_pathologist_name || postmortem.external_name) {
       pathologistType = 'external';
     }
 
-    const summary = postmortem.summary || '';
+    const summary = postmortem.examination_summary || postmortem.summary || '';
     const causeOfDeath = postmortem.cause_of_death || '';
-    const staffUsername = postmortem.staff_username || postmortem.pathologist_id || '';
-    const externalName = postmortem.external_name || '';
-    const externalMobile = postmortem.external_mobile || '';
-    const externalIdNumber = postmortem.external_id_number || '';
+    const staffUsername = postmortem.pathologist_name || postmortem.staff_username || '';
+    const externalName = postmortem.external_pathologist_name || postmortem.external_name || '';
+    const externalMobile = postmortem.external_pathologist_mobile || postmortem.external_mobile || '';
+    const externalIdNumber = postmortem.external_pathologist_id || postmortem.external_id_number || '';
 
     setFormData({
       deceased_id: deceasedId,
-      summary: summary,
+      summary,
       findings: findingsArray,
       cause_of_death: causeOfDeath,
+      immediate_cause_of_death: postmortem.immediate_cause_of_death || '',
+      underlying_cause_of_death: postmortem.underlying_cause_of_death || '',
+      contributing_conditions: postmortem.contributing_conditions || '',
+      manner_of_death: postmortem.manner_of_death || '',
+      requesting_authority: postmortem.requesting_authority || '',
       pathologist_type: pathologistType,
       staff_username: staffUsername,
       external_name: externalName,
@@ -655,7 +713,6 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
       }
     } else {
       if (!formData.external_name.trim()) newErrors.external_name = 'External pathologist name is required';
-      if (!formData.external_mobile.trim()) newErrors.external_mobile = 'External pathologist mobile is required';
       if (!formData.external_id_number.trim()) newErrors.external_id_number = 'External pathologist ID number is required';
     }
     
@@ -689,25 +746,31 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
         findingsObject[finding.title] = finding.description;
       });
       
+      const tenantSlug = getTenantSlug();
       const submissionData = {
         deceased_id: formData.deceased_id,
-        summary: formData.summary,
+        examination_summary: formData.summary,
         findings: findingsObject,
         cause_of_death: formData.cause_of_death,
+        immediate_cause_of_death: formData.immediate_cause_of_death,
+        underlying_cause_of_death: formData.underlying_cause_of_death,
+        contributing_conditions: formData.contributing_conditions,
+        manner_of_death: formData.manner_of_death,
+        requesting_authority: formData.requesting_authority,
         ...(formData.pathologist_type === 'staff' 
-          ? { staff_username: formData.staff_username }
+          ? { pathologist_name: formData.staff_username }
           : {
-              external_name: formData.external_name,
-              external_mobile: formData.external_mobile,
-              external_id_number: formData.external_id_number
+              external_pathologist_name: formData.external_name,
+              external_pathologist_id: formData.external_id_number
             }
         )
       };
       
-      const response = await fetch('http://localhost:5000/api/v1/restpoint/deceased/autopsy', {
+      const response = await fetch(`${POSTMORTEM_BASE_URL}/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-tenant-slug': tenantSlug
         },
         body: JSON.stringify(submissionData)
       });
@@ -749,15 +812,52 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
     }
   };
 
+  const downloadPostmortemPdf = async () => {
+    if (!deceasedId) return;
+    setIsDownloadingPdf(true);
+    setDownloadStatus(null);
+
+    try {
+      const tenantSlug = getTenantSlug();
+      const response = await fetch(`${POSTMORTEM_BASE_URL}/${deceasedId}/pdf`, {
+        headers: {
+          'Accept': 'application/pdf',
+          'x-tenant-slug': tenantSlug
+        }
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || 'Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `postmortem-${deceasedId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setDownloadStatus('success');
+    } catch (error) {
+      console.error('Error downloading postmortem PDF:', error);
+      setDownloadStatus('error');
+    } finally {
+      setIsDownloadingPdf(false);
+      setTimeout(() => setDownloadStatus(null), 4000);
+    }
+  };
+
   const enableEditMode = () => {
     setIsEditMode(true);
   };
 
   const cancelEdit = () => {
     setIsEditMode(false);
-    if (existingPostmortem) {
-      populateFormWithExistingData(existingPostmortem);
-    }
+    fetchExistingPostmortem();
   };
 
   const isFormDisabled = existingPostmortem && !isEditMode;
@@ -813,6 +913,18 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
               <Alert className="error">
                 <AlertCircle size={18} /> Error saving postmortem data. Please try again.
               </Alert>
+            )}
+            
+            {downloadStatus === 'success' && (
+              <DownloadStatusAlert className="success">
+                <AlertCircle size={18} /> PDF downloaded successfully!
+              </DownloadStatusAlert>
+            )}
+            
+            {downloadStatus === 'error' && (
+              <DownloadStatusAlert className="error">
+                <AlertCircle size={18} /> Error downloading PDF. Please try again.
+              </DownloadStatusAlert>
             )}
             
             {existingPostmortem && !isEditMode && (
@@ -886,6 +998,90 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
                     </>
                   )}
                 </FormGroup>
+
+                <FormGrid>
+                  <FormGroup>
+                    <Label>Immediate Cause</Label>
+                    {isFormDisabled ? (
+                      <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
+                        {formData.immediate_cause_of_death || 'Not specified'}
+                      </div>
+                    ) : (
+                      <Input
+                        name="immediate_cause_of_death"
+                        value={formData.immediate_cause_of_death}
+                        onChange={handleInputChange}
+                        placeholder="Immediate cause of death"
+                      />
+                    )}
+                  </FormGroup>
+
+                  <FormGroup>
+                    <Label>Underlying Cause</Label>
+                    {isFormDisabled ? (
+                      <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
+                        {formData.underlying_cause_of_death || 'Not specified'}
+                      </div>
+                    ) : (
+                      <Input
+                        name="underlying_cause_of_death"
+                        value={formData.underlying_cause_of_death}
+                        onChange={handleInputChange}
+                        placeholder="Underlying cause of death"
+                      />
+                    )}
+                  </FormGroup>
+                </FormGrid>
+
+                <FormGroup>
+                  <Label>Contributing Conditions</Label>
+                  {isFormDisabled ? (
+                    <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
+                      {formData.contributing_conditions || 'Not specified'}
+                    </div>
+                  ) : (
+                    <TextArea
+                      name="contributing_conditions"
+                      value={formData.contributing_conditions}
+                      onChange={handleInputChange}
+                      placeholder="Any contributing conditions or comorbidities"
+                    />
+                  )}
+                </FormGroup>
+
+                <FormGrid>
+                  <FormGroup>
+                    <Label>Manner of Death</Label>
+                    {isFormDisabled ? (
+                      <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
+                        {formData.manner_of_death || 'Not specified'}
+                      </div>
+                    ) : (
+                      <Input
+                        name="manner_of_death"
+                        value={formData.manner_of_death}
+                        onChange={handleInputChange}
+                        placeholder="Natural, accidental, homicide, suicide, undetermined"
+                      />
+                    )}
+                  </FormGroup>
+
+                  <FormGroup>
+                    <Label>Requesting Authority</Label>
+                    {isFormDisabled ? (
+                      <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
+                        {formData.requesting_authority || 'Not specified'}
+                      </div>
+                    ) : (
+                      <Input
+                        name="requesting_authority"
+                        value={formData.requesting_authority}
+                        onChange={handleInputChange}
+                        placeholder="Name of requesting doctor or authority"
+                      />
+                    )}
+                  </FormGroup>
+                </FormGrid>
               </FormSection>
 
               <FormSection>
@@ -1025,21 +1221,19 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
                         borderRadius: '8px',
                         border: '2px solid #e5e7eb'
                       }}>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                          Staff Pathologist
-                        </div>
+
                         <div style={{ fontWeight: '500', color: '#374151' }}>
-                          {formData.staff_username || 'No staff pathologist specified'}
+                          {formData.staff_username || 'No pathologist specified'}
                         </div>
                       </div>
                     ) : (
                       <FormGroup>
-                        <Label>Staff Pathologist Username</Label>
+                        <Label>Pathologist Name</Label>
                         <Input
                           name="staff_username"
                           value={formData.staff_username}
                           onChange={handleInputChange}
-                          placeholder="Enter staff username"
+                          placeholder="Enter pathologist name"
                           error={errors.staff_username}
                         />
                         {errors.staff_username && <ErrorText>{errors.staff_username}</ErrorText>}
@@ -1074,7 +1268,7 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
                     </FormGroup>
                     
                     <FormGroup>
-                      <Label>Mobile Number</Label>
+                      <Label>Mobile Number (Optional)</Label>
                       {isFormDisabled ? (
                         <div style={{ 
                           background: '#f9fafb', 
@@ -1085,16 +1279,12 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
                           {formData.external_mobile || 'Not specified'}
                         </div>
                       ) : (
-                        <>
-                          <Input
-                            name="external_mobile"
-                            value={formData.external_mobile}
-                            onChange={handleInputChange}
-                            placeholder="Phone number"
-                            error={errors.external_mobile}
-                          />
-                          {errors.external_mobile && <ErrorText>{errors.external_mobile}</ErrorText>}
-                        </>
+                        <Input
+                          name="external_mobile"
+                          value={formData.external_mobile}
+                          onChange={handleInputChange}
+                          placeholder="Phone number (optional)"
+                        />
                       )}
                     </FormGroup>
                     
@@ -1127,6 +1317,20 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
               </FormSection>
 
               <ButtonGroup>
+                {existingPostmortem && !isEditMode && (
+                  <Button type="button" className="secondary" onClick={downloadPostmortemPdf} disabled={isDownloadingPdf}>
+                    {isDownloadingPdf ? (
+                      <>
+                        <SpinningLoader size={16} /> Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={16} /> Download PDF
+                      </>
+                    )}
+                  </Button>
+                )}
+
                 {existingPostmortem && isEditMode ? (
                   <>
                     <Button type="button" className="secondary" onClick={cancelEdit}>
@@ -1175,6 +1379,5 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
       )}
     </Container>
   );
-};
 
 export default PostmortemInfoSection;
