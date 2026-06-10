@@ -698,6 +698,49 @@ const optimizeDispatch = (availableVehicles, tripData) => {
 };
 
 // ============================================
+// BILLING CALCULATION SERVICE
+// ============================================
+
+const calculateBillingUpToDay = (dispatchDate, ratePerDay = 5000) => {
+  const today = new Date();
+  const dispatch = new Date(dispatchDate);
+  dispatch.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  if (dispatch > today) return 0;
+
+  const daysElapsed = Math.floor((today - dispatch) / (1000 * 60 * 60 * 24)) + 1;
+  return daysElapsed * ratePerDay;
+};
+
+const updateDeceasedBilling = async (deceasedId, dispatchData, tenantSlug) => {
+  try {
+    const billingAmount = calculateBillingUpToDay(dispatchData.dispatch_date);
+    const response = await axios.put(
+      `${API_BASE_URL}/api/v1/restpoint/deceased/${deceasedId}/billing`,
+      {
+        dispatch_set_date: dispatchData.dispatch_date,
+        dispatch_id: dispatchData.dispatch_id,
+        dispatch_vehicle: dispatchData.vehicle_plate,
+        dispatch_destination: dispatchData.destination_address,
+        billing_amount: billingAmount,
+        last_updated: new Date().toISOString(),
+      },
+      {
+        headers: {
+          'x-tenant-slug': tenantSlug,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.warn('Billing update info:', error.response?.data || error.message);
+    return null;
+  }
+};
+
+// ============================================
 // WHATSAPP NOTIFICATION SERVICE
 // ============================================
 
@@ -741,6 +784,7 @@ const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const [username, setUsername] = useState('System');
   const [trips, setTrips] = useState([]);
   const [availableVehicles, setAvailableVehicles] = useState([]);
@@ -807,9 +851,11 @@ const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
   const fetchTrips = async () => {
     if (!effectiveDeceasedId) {
       setTrips([]);
+      setIsLoadingTrips(false);
       return;
     }
     try {
+      setIsLoadingTrips(true);
       const tenantSlug = getTenantSlug();
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/restpoint/dispatch/${effectiveDeceasedId}`,
@@ -827,6 +873,8 @@ const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
     } catch (error) {
       console.error('Error fetching trips:', error);
       setTrips([]);
+    } finally {
+      setIsLoadingTrips(false);
     }
   };
 
@@ -1028,20 +1076,29 @@ const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
         'x-tenant-slug': tenantSlug,
       };
 
+      let dispatchResponse;
       if (editingId) {
-        await axios.put(
+        dispatchResponse = await axios.put(
           `${API_BASE_URL}/api/v1/restpoint/dispatch/${editingId}`,
           tripData,
           { headers }
         );
         setMessage('Trip updated successfully!');
       } else {
-        await axios.post(
+        dispatchResponse = await axios.post(
           `${API_BASE_URL}/api/v1/restpoint/dispatch`,
           tripData,
           { headers }
         );
         setMessage('Trip created successfully!');
+      }
+
+      if (dispatchResponse?.data?.data) {
+        const dispatchWithId = {
+          ...tripData,
+          dispatch_id: dispatchResponse.data.data.dispatch_id || editingId,
+        };
+        await updateDeceasedBilling(effectiveDeceasedId, dispatchWithId, tenantSlug);
       }
 
       setTimeout(async () => {
@@ -1213,11 +1270,20 @@ const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
 
       {trips.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: Colors.textSecondary }}>
-          <Truck size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-          <p style={{ margin: 0, fontSize: '0.9rem' }}>No dispatch trips added yet</p>
-          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: Colors.textMuted }}>
-            Click "New Dispatch" to create your first trip
-          </p>
+          {isLoadingTrips ? (
+            <>
+              <Loader2 size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} className="animate-spin" />
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>Loading dispatch trips...</p>
+            </>
+          ) : (
+            <>
+              <Truck size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>No dispatch trips added yet</p>
+              <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: Colors.textSecondary }}>
+                Click "New Dispatch" to create your first trip
+              </p>
+            </>
+          )}
         </div>
       ) : (
         trips.map((trip) => {
