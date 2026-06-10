@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { 
-  X, Save, Download, Printer, Undo, Redo, ZoomIn, ZoomOut, 
+import {
+  X, Save, Download, Printer, Undo, Redo, ZoomIn, ZoomOut,
   Pen, Eraser, Type, Square, Circle, Image as ImageIcon, Signature,
-  Trash2, Eye, Check, Upload, Move, RefreshCw
+  Trash2, Eye, Check, Upload, Move, RefreshCw, AlertCircle, Lock, Cloud
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -12,35 +12,90 @@ import { fabric } from 'fabric';
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-const API_BASE_URL = 'http://localhost:8000/api/v1/restpoint';
+// ============================================
+// PRODUCTION CONFIGURATION
+// ============================================
 
-// Utility to convert Data URL to Blob for file uploading
-const dataURItoBlob = (dataURI) => {
-  const byteString = atob(dataURI.split(',')[1]);
-  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([ab], { type: mimeString });
+const CONFIG = {
+  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1/restpoint',
+  AUTO_SAVE_INTERVAL: 30000, // 30 seconds
+  MAX_CANVAS_SIZE: { width: 800, height: 1131 }, // A4
+  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
+  HISTORY_MAX_STATES: 50,
+  SUPPORTED_FILE_TYPES: ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'],
+  PRODUCTION: process.env.NODE_ENV === 'production',
+  ENABLE_AUTO_SAVE: true,
+  ISOLATION_LEVEL: 'strict' // strict = verify tenant on every API call
 };
 
-const DocumentEditor = ({ 
-  document: initialDocument, 
-  template: initialTemplate, 
-  file: initialFile, 
-  onClose, 
-  onSave 
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+const dataURItoBlob = (dataURI) => {
+  try {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  } catch (error) {
+    console.error('Error converting data URI to blob:', error);
+    throw error;
+  }
+};
+
+// Tenant isolation helper - verify tenant before any operation
+const getTenantInfo = () => {
+  const tenantSlug = localStorage.getItem('tenantSlug') ||
+                     localStorage.getItem('tenant_slug') ||
+                     (() => {
+                       try {
+                         const user = JSON.parse(localStorage.getItem('user') || '{}');
+                         return user.tenantSlug || user.tenant?.slug || null;
+                       } catch {
+                         return null;
+                       }
+                     })();
+
+  if (!tenantSlug && CONFIG.PRODUCTION && CONFIG.ISOLATION_LEVEL === 'strict') {
+    throw new Error('SECURITY: Tenant not identified. Operation aborted.');
+  }
+
+  return {
+    slug: tenantSlug || 'default',
+    isValid: !!tenantSlug
+  };
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
+const DocumentEditor = ({
+  document: initialDocument,
+  template: initialTemplate,
+  file: initialFile,
+  onClose,
+  onSave
 }) => {
   const canvasRef = useRef(null);
   const signatureCanvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  
+  const autoSaveTimerRef = useRef(null);
+
   // Refs to prevent closure stale values
   const documentRef = useRef(initialDocument);
   const templateRef = useRef(initialTemplate);
   const fileRef = useRef(initialFile);
+
+  // Tenant & Security
+  const [tenantInfo] = useState(() => getTenantInfo());
+  const [securityStatus, setSecurityStatus] = useState('verified');
+  const [lastSaveTime, setLastSaveTime] = useState(null);
 
   // Editor states
   const [canvas, setCanvas] = useState(null);
@@ -49,16 +104,20 @@ const DocumentEditor = ({
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [selectedObject, setSelectedObject] = useState(null);
-  
+
   // Signature pad states
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [signatureData, setSignatureData] = useState(null);
   const [isSigning, setIsSigning] = useState(false);
-  
+
   // Document info
   const [documentTitle, setDocumentTitle] = useState(initialDocument?.title || initialTemplate?.name || 'Untitled Document');
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [fieldValues, setFieldValues] = useState(initialDocument?.fieldValues || {});
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   // History Undo/Redo states
   const historyRef = useRef([]);
@@ -66,392 +125,638 @@ const DocumentEditor = ({
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  const tenantSlug = localStorage.getItem('tenantSlug') || 'default';
+  // ============================================
+  // SECURITY & INITIALIZATION
+  // ============================================
 
-  // Helper to save state history
-  const saveHistoryState = (fabricCanvas) => {
-    if (!fabricCanvas || fabricCanvas._loadingState) return;
-    
-    const json = fabricCanvas.toJSON();
-    const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
-    newHistory.push(json);
-    
-    if (newHistory.length > 30) {
-      newHistory.shift();
-    }
-    
-    historyRef.current = newHistory;
-    historyIndexRef.current = newHistory.length - 1;
-    
-    setCanUndo(historyIndexRef.current > 0);
-    setCanRedo(false);
-  };
-
-  // Undo action
-  const handleUndo = () => {
-    if (!canvas || historyIndexRef.current <= 0) return;
-    
-    const targetIndex = historyIndexRef.current - 1;
-    const state = historyRef.current[targetIndex];
-    const bgImage = canvas.backgroundImage;
-    
-    canvas._loadingState = true;
-    canvas.loadFromJSON(state, () => {
-      if (bgImage) {
-        canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
-      }
-      canvas.renderAll();
-      historyIndexRef.current = targetIndex;
-      setCanUndo(targetIndex > 0);
-      setCanRedo(true);
-      canvas._loadingState = false;
-    });
-  };
-
-  // Redo action
-  const handleRedo = () => {
-    if (!canvas || historyIndexRef.current >= historyRef.current.length - 1) return;
-    
-    const targetIndex = historyIndexRef.current + 1;
-    const state = historyRef.current[targetIndex];
-    const bgImage = canvas.backgroundImage;
-    
-    canvas._loadingState = true;
-    canvas.loadFromJSON(state, () => {
-      if (bgImage) {
-        canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
-      }
-      canvas.renderAll();
-      historyIndexRef.current = targetIndex;
-      setCanUndo(true);
-      setCanRedo(targetIndex < historyRef.current.length - 1);
-      canvas._loadingState = false;
-    });
-  };
-
-  // Initialize Fabric canvas
+  // Verify tenant on mount
   useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-      width: 800,
-      height: 1131, // A4 ratio
-      backgroundColor: '#ffffff',
-      preserveObjectStacking: true,
-      selection: true
-    });
-
-    setCanvas(fabricCanvas);
-
-    // Event listeners
-    fabricCanvas.on('object:added', (e) => {
-      if (e.target && !e.target.isBackground) {
-        saveHistoryState(fabricCanvas);
+    try {
+      if (!tenantInfo.slug) {
+        setSecurityStatus('unverified');
+        setLoadError('Tenant information not available');
+        return;
       }
-    });
+      setSecurityStatus('verified');
+    } catch (error) {
+      setSecurityStatus('error');
+      setLoadError(error.message);
+    }
+  }, [tenantInfo]);
 
-    fabricCanvas.on('object:modified', () => {
-      saveHistoryState(fabricCanvas);
-    });
+  // ============================================
+  // HISTORY MANAGEMENT
+  // ============================================
 
-    fabricCanvas.on('object:removed', (e) => {
-      if (e.target && !e.target.isBackground) {
-        saveHistoryState(fabricCanvas);
+  const saveHistoryState = useCallback((fabricCanvas) => {
+    if (!fabricCanvas || fabricCanvas._loadingState) return;
+
+    try {
+      const json = fabricCanvas.toJSON();
+      const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+      newHistory.push(json);
+
+      if (newHistory.length > CONFIG.HISTORY_MAX_STATES) {
+        newHistory.shift();
       }
-    });
 
-    fabricCanvas.on('selection:created', (e) => {
-      setSelectedObject(e.selected[0]);
-    });
+      historyRef.current = newHistory;
+      historyIndexRef.current = newHistory.length - 1;
 
-    fabricCanvas.on('selection:updated', (e) => {
-      setSelectedObject(e.selected[0]);
-    });
-
-    fabricCanvas.on('selection:cleared', () => {
-      setSelectedObject(null);
-    });
-
-    // Load Document/Template Background
-    loadBackground(fabricCanvas);
-
-    return () => {
-      fabricCanvas.dispose();
-    };
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(false);
+      setIsDirty(true);
+    } catch (error) {
+      console.error('Error saving history state:', error);
+    }
   }, []);
 
-  // Set Brush preferences on activeTool / brush changes
+  const handleUndo = useCallback(() => {
+    if (!canvas || historyIndexRef.current <= 0) return;
+
+    try {
+      const targetIndex = historyIndexRef.current - 1;
+      const state = historyRef.current[targetIndex];
+      const bgImage = canvas.backgroundImage;
+
+      canvas._loadingState = true;
+      canvas.loadFromJSON(state, () => {
+        try {
+          if (bgImage) {
+            canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
+          }
+          canvas.renderAll();
+          historyIndexRef.current = targetIndex;
+          setCanUndo(targetIndex > 0);
+          setCanRedo(true);
+          setIsDirty(true);
+        } finally {
+          canvas._loadingState = false;
+        }
+      });
+    } catch (error) {
+      console.error('Error during undo:', error);
+      Swal.fire('Error', 'Failed to undo action', 'error');
+    }
+  }, [canvas]);
+
+  const handleRedo = useCallback(() => {
+    if (!canvas || historyIndexRef.current >= historyRef.current.length - 1) return;
+
+    try {
+      const targetIndex = historyIndexRef.current + 1;
+      const state = historyRef.current[targetIndex];
+      const bgImage = canvas.backgroundImage;
+
+      canvas._loadingState = true;
+      canvas.loadFromJSON(state, () => {
+        try {
+          if (bgImage) {
+            canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
+          }
+          canvas.renderAll();
+          historyIndexRef.current = targetIndex;
+          setCanUndo(true);
+          setCanRedo(targetIndex < historyRef.current.length - 1);
+          setIsDirty(true);
+        } finally {
+          canvas._loadingState = false;
+        }
+      });
+    } catch (error) {
+      console.error('Error during redo:', error);
+      Swal.fire('Error', 'Failed to redo action', 'error');
+    }
+  }, [canvas]);
+
+  // ============================================
+  // CANVAS INITIALIZATION
+  // ============================================
+
+  useEffect(() => {
+    if (!canvasRef.current || !tenantInfo.slug || securityStatus !== 'verified') return;
+
+    try {
+      const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+        width: CONFIG.MAX_CANVAS_SIZE.width,
+        height: CONFIG.MAX_CANVAS_SIZE.height,
+        backgroundColor: '#ffffff',
+        preserveObjectStacking: true,
+        selection: true,
+        controlsAboveObjects: true,
+        enablePointerEvents: true
+      });
+
+      setCanvas(fabricCanvas);
+
+      // Event listeners with error handling
+      const handleObjectAdded = (e) => {
+        try {
+          if (e.target && !e.target.isBackground) {
+            saveHistoryState(fabricCanvas);
+          }
+        } catch (error) {
+          console.error('Error in object:added handler:', error);
+        }
+      };
+
+      const handleObjectModified = () => {
+        try {
+          saveHistoryState(fabricCanvas);
+        } catch (error) {
+          console.error('Error in object:modified handler:', error);
+        }
+      };
+
+      const handleObjectRemoved = (e) => {
+        try {
+          if (e.target && !e.target.isBackground) {
+            saveHistoryState(fabricCanvas);
+          }
+        } catch (error) {
+          console.error('Error in object:removed handler:', error);
+        }
+      };
+
+      const handleSelectionCreated = (e) => {
+        try {
+          setSelectedObject(e.selected[0]);
+        } catch (error) {
+          console.error('Error in selection:created handler:', error);
+        }
+      };
+
+      const handleSelectionUpdated = (e) => {
+        try {
+          setSelectedObject(e.selected[0]);
+        } catch (error) {
+          console.error('Error in selection:updated handler:', error);
+        }
+      };
+
+      const handleSelectionCleared = () => {
+        try {
+          setSelectedObject(null);
+        } catch (error) {
+          console.error('Error in selection:cleared handler:', error);
+        }
+      };
+
+      fabricCanvas.on('object:added', handleObjectAdded);
+      fabricCanvas.on('object:modified', handleObjectModified);
+      fabricCanvas.on('object:removed', handleObjectRemoved);
+      fabricCanvas.on('selection:created', handleSelectionCreated);
+      fabricCanvas.on('selection:updated', handleSelectionUpdated);
+      fabricCanvas.on('selection:cleared', handleSelectionCleared);
+
+      // Load background
+      loadBackground(fabricCanvas).then(() => {
+        setIsLoading(false);
+      }).catch((error) => {
+        console.error('Error loading background:', error);
+        setLoadError('Failed to load document background');
+        setIsLoading(false);
+      });
+
+      return () => {
+        fabricCanvas.off('object:added', handleObjectAdded);
+        fabricCanvas.off('object:modified', handleObjectModified);
+        fabricCanvas.off('object:removed', handleObjectRemoved);
+        fabricCanvas.off('selection:created', handleSelectionCreated);
+        fabricCanvas.off('selection:updated', handleSelectionUpdated);
+        fabricCanvas.off('selection:cleared', handleSelectionCleared);
+        fabricCanvas.dispose();
+      };
+    } catch (error) {
+      console.error('Error initializing canvas:', error);
+      setLoadError('Failed to initialize editor');
+      setIsLoading(false);
+    }
+  }, [tenantInfo, securityStatus, saveHistoryState]);
+
+  // ============================================
+  // BRUSH CONFIGURATION
+  // ============================================
+
   useEffect(() => {
     if (!canvas) return;
 
-    if (activeTool === 'pen') {
-      canvas.isDrawingMode = true;
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-      canvas.freeDrawingBrush.color = brushColor;
-      canvas.freeDrawingBrush.width = brushSize;
-    } else if (activeTool === 'eraser') {
-      canvas.isDrawingMode = true;
-      // White drawing brush simulates erasures on white background documents
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-      canvas.freeDrawingBrush.color = '#ffffff';
-      canvas.freeDrawingBrush.width = brushSize * 4;
-    } else {
-      canvas.isDrawingMode = false;
+    try {
+      if (activeTool === 'pen') {
+        canvas.isDrawingMode = true;
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.color = brushColor;
+        canvas.freeDrawingBrush.width = brushSize;
+      } else if (activeTool === 'eraser') {
+        canvas.isDrawingMode = true;
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.color = '#ffffff';
+        canvas.freeDrawingBrush.width = brushSize * 4;
+      } else {
+        canvas.isDrawingMode = false;
+      }
+    } catch (error) {
+      console.error('Error configuring brush:', error);
     }
   }, [activeTool, brushColor, brushSize, canvas]);
 
-  // Keyboard Delete key event listener
+  // ============================================
+  // KEYBOARD SHORTCUTS
+  // ============================================
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const activeObject = canvas?.getActiveObject();
-        // If not typing inside Textbox, delete the selected shape
-        if (activeObject && activeObject.type !== 'textbox' && !activeObject.isEditing) {
+      try {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          const activeObject = canvas?.getActiveObject();
+          if (activeObject && activeObject.type !== 'textbox' && !activeObject.isEditing) {
+            e.preventDefault();
+            deleteSelected();
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
           e.preventDefault();
-          deleteSelected();
+          handleUndo();
+        } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+          e.preventDefault();
+          handleRedo();
+        } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          saveDocument();
         }
+      } catch (error) {
+        console.error('Error in keyboard handler:', error);
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canvas]);
+  }, [canvas, handleUndo, handleRedo]);
 
-  // Load Background Document (PDF / Image)
+  // ============================================
+  // AUTO-SAVE MECHANISM
+  // ============================================
+
+  const autoSaveDocument = useCallback(async () => {
+    if (!canvas || !isDirty || isSaving || !tenantInfo.slug) return;
+
+    try {
+      setIsAutoSaving(true);
+      const canvasState = JSON.stringify(canvas.toJSON());
+      const dataUrl = canvas.toDataURL({ format: 'png', quality: 0.8 });
+
+      const doc = documentRef.current;
+      if (doc?.id) {
+        await axios.put(
+          `${CONFIG.API_BASE_URL}/edocuments/${doc.id}`,
+          {
+            title: documentTitle,
+            canvasState: canvasState,
+            image: dataUrl,
+            status: 'draft',
+            fieldValues: fieldValues,
+            autoSaved: true
+          },
+          {
+            headers: {
+              'x-tenant-slug': tenantInfo.slug,
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000
+          }
+        );
+
+        setLastSaveTime(new Date().toLocaleTimeString());
+        setIsDirty(false);
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      if (CONFIG.PRODUCTION) {
+        console.warn('Auto-save failed - changes still in browser memory');
+      }
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [canvas, isDirty, isSaving, tenantInfo, documentTitle, fieldValues]);
+
+  // Set up auto-save interval
+  useEffect(() => {
+    if (!CONFIG.ENABLE_AUTO_SAVE) return;
+
+    autoSaveTimerRef.current = setInterval(() => {
+      autoSaveDocument();
+    }, CONFIG.AUTO_SAVE_INTERVAL);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearInterval(autoSaveTimerRef.current);
+      }
+    };
+  }, [autoSaveDocument]);
+
+  // ============================================
+  // BACKGROUND LOADING
+  // ============================================
+
   const loadBackground = async (fabricCanvas) => {
     const file = fileRef.current;
     const doc = documentRef.current;
     const template = templateRef.current;
 
-    const setFabricBackgroundImage = (url) => {
-      fabricCanvas._loadingState = true;
-      fabric.Image.fromURL(url, (img) => {
-        img.set({
-          scaleX: fabricCanvas.width / img.width,
-          scaleY: fabricCanvas.height / img.height,
-          originX: 'left',
-          originY: 'top',
-          selectable: false,
-          evented: false,
-          isBackground: true
-        });
-        
-        fabricCanvas.setBackgroundImage(img, () => {
-          fabricCanvas.renderAll();
-          fabricCanvas._loadingState = false;
-          
-          // Load saved state if opening existing document
-          if (doc?.canvasState) {
-            const state = typeof doc.canvasState === 'string' ? JSON.parse(doc.canvasState) : doc.canvasState;
-            fabricCanvas._loadingState = true;
-            fabricCanvas.loadFromJSON(state, () => {
-              // Ensure background persists
-              fabricCanvas.setBackgroundImage(img, fabricCanvas.renderAll.bind(fabricCanvas));
-              fabricCanvas.renderAll();
-              fabricCanvas._loadingState = false;
-              saveHistoryState(fabricCanvas);
-            });
-          } else {
-            saveHistoryState(fabricCanvas);
-          }
-        });
-      }, { crossOrigin: 'anonymous' });
-    };
-
-    const loadPDFBackground = async (pdfData) => {
-      try {
-        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-        
-        const viewport = page.getViewport({ scale: 2.0 });
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = viewport.width;
-        tempCanvas.height = viewport.height;
-        
-        await page.render({
-          canvasContext: tempCtx,
-          viewport: viewport
-        }).promise;
-        
-        const dataUrl = tempCanvas.toDataURL('image/png');
-        setFabricBackgroundImage(dataUrl);
-      } catch (error) {
-        console.error('Error rendering PDF page background:', error);
-        Swal.fire('Error', 'Failed to render PDF page background', 'error');
-      }
-    };
-
-    if (file) {
-      if (file.type === 'application/pdf') {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const typedArray = new Uint8Array(e.target.result);
-          await loadPDFBackground(typedArray);
-        };
-        reader.readAsArrayBuffer(file);
-      } else if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setFabricBackgroundImage(e.target.result);
-        };
-        reader.readAsDataURL(file);
-      }
-    } else if (doc?.fileUrl) {
-      const url = `${API_BASE_URL}/edocuments/download/${doc.fileUrl}`;
-      if (doc.fileUrl.toLowerCase().endsWith('.pdf')) {
+    return new Promise((resolve, reject) => {
+      const setFabricBackgroundImage = (url) => {
         try {
-          const response = await fetch(url, { headers: { 'x-tenant-slug': tenantSlug } });
-          const buffer = await response.arrayBuffer();
-          await loadPDFBackground(new Uint8Array(buffer));
+          fabricCanvas._loadingState = true;
+          fabric.Image.fromURL(url, (img) => {
+            try {
+              img.set({
+                scaleX: fabricCanvas.width / img.width,
+                scaleY: fabricCanvas.height / img.height,
+                originX: 'left',
+                originY: 'top',
+                selectable: false,
+                evented: false,
+                isBackground: true
+              });
+
+              fabricCanvas.setBackgroundImage(img, () => {
+                try {
+                  fabricCanvas.renderAll();
+                  fabricCanvas._loadingState = false;
+
+                  if (doc?.canvasState) {
+                    const state = typeof doc.canvasState === 'string' ? JSON.parse(doc.canvasState) : doc.canvasState;
+                    fabricCanvas._loadingState = true;
+                    fabricCanvas.loadFromJSON(state, () => {
+                      try {
+                        fabricCanvas.setBackgroundImage(img, fabricCanvas.renderAll.bind(fabricCanvas));
+                        fabricCanvas.renderAll();
+                        fabricCanvas._loadingState = false;
+                        saveHistoryState(fabricCanvas);
+                        resolve();
+                      } catch (error) {
+                        reject(error);
+                      }
+                    });
+                  } else {
+                    saveHistoryState(fabricCanvas);
+                    resolve();
+                  }
+                } catch (error) {
+                  reject(error);
+                }
+              });
+            } catch (error) {
+              reject(error);
+            }
+          }, { crossOrigin: 'anonymous' });
         } catch (error) {
-          console.error('Error loading PDF fileUrl:', error);
-          setFabricBackgroundImage(url);
+          reject(error);
         }
-      } else {
-        setFabricBackgroundImage(url);
+      };
+
+      const loadPDFBackground = async (pdfData) => {
+        try {
+          const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+          const pdf = await loadingTask.promise;
+          const page = await pdf.getPage(1);
+
+          const viewport = page.getViewport({ scale: 2.0 });
+          const tempCanvas = document.createElement('canvas');
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCanvas.width = viewport.width;
+          tempCanvas.height = viewport.height;
+
+          await page.render({
+            canvasContext: tempCtx,
+            viewport: viewport
+          }).promise;
+
+          const dataUrl = tempCanvas.toDataURL('image/png');
+          setFabricBackgroundImage(dataUrl);
+        } catch (error) {
+          reject(new Error('Failed to render PDF: ' + error.message));
+        }
+      };
+
+      try {
+        if (file) {
+          if (file.type === 'application/pdf') {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              const typedArray = new Uint8Array(e.target.result);
+              await loadPDFBackground(typedArray);
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsArrayBuffer(file);
+          } else if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setFabricBackgroundImage(e.target.result);
+            };
+            reader.onerror = () => reject(new Error('Failed to read image file'));
+            reader.readAsDataURL(file);
+          }
+        } else if (doc?.fileUrl) {
+          const url = `${CONFIG.API_BASE_URL}/edocuments/download/${doc.fileUrl}`;
+          if (doc.fileUrl.toLowerCase().endsWith('.pdf')) {
+            try {
+              const response = await fetch(url, {
+                headers: { 'x-tenant-slug': tenantInfo.slug }
+              });
+              const buffer = await response.arrayBuffer();
+              await loadPDFBackground(new Uint8Array(buffer));
+            } catch (error) {
+              setFabricBackgroundImage(url);
+            }
+          } else {
+            setFabricBackgroundImage(url);
+          }
+        } else if (template?.fileName) {
+          const url = `${CONFIG.API_BASE_URL}/edocuments/templates/download/${template.fileName}`;
+          setFabricBackgroundImage(url);
+        } else {
+          resolve();
+        }
+      } catch (error) {
+        reject(error);
       }
-    } else if (template?.fileName) {
-      const url = `${API_BASE_URL}/edocuments/templates/download/${template.fileName}`;
-      setFabricBackgroundImage(url);
-    }
-  };
-
-  // Add Editable Text Box
-  const addTextBox = () => {
-    if (!canvas) return;
-    const text = new fabric.Textbox('Double click to edit text', {
-      left: 150,
-      top: 150,
-      width: 250,
-      fontSize: 18,
-      fontFamily: 'Arial',
-      fill: brushColor === '#ffffff' ? '#000000' : brushColor,
-      borderColor: '#c9a84c',
-      cornerColor: '#c9a84c',
-      cornerSize: 8,
-      transparentCorners: false
     });
-    canvas.add(text);
-    canvas.setActiveObject(text);
-    canvas.renderAll();
-    saveHistoryState(canvas);
   };
 
-  // Add Rectangle
-  const addRectangle = () => {
-    if (!canvas) return;
-    const rect = new fabric.Rect({
-      left: 150,
-      top: 150,
-      width: 120,
-      height: 80,
-      fill: 'transparent',
-      stroke: brushColor === '#ffffff' ? '#000000' : brushColor,
-      strokeWidth: brushSize,
-      borderColor: '#c9a84c',
-      cornerColor: '#c9a84c',
-      cornerSize: 8,
-      transparentCorners: false
-    });
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
-    canvas.renderAll();
-    saveHistoryState(canvas);
-  };
+  // ============================================
+  // CANVAS OPERATIONS
+  // ============================================
 
-  // Add Circle
-  const addCircle = () => {
+  const addTextBox = useCallback(() => {
     if (!canvas) return;
-    const circle = new fabric.Circle({
-      left: 150,
-      top: 150,
-      radius: 50,
-      fill: 'transparent',
-      stroke: brushColor === '#ffffff' ? '#000000' : brushColor,
-      strokeWidth: brushSize,
-      borderColor: '#c9a84c',
-      cornerColor: '#c9a84c',
-      cornerSize: 8,
-      transparentCorners: false
-    });
-    canvas.add(circle);
-    canvas.setActiveObject(circle);
-    canvas.renderAll();
-    saveHistoryState(canvas);
-  };
-
-  // Delete Selected Element
-  const deleteSelected = () => {
-    if (!canvas) return;
-    const activeObject = canvas.getActiveObject();
-    if (activeObject) {
-      canvas.remove(activeObject);
-      canvas.discardActiveObject();
+    try {
+      const text = new fabric.Textbox('Double click to edit text', {
+        left: 150,
+        top: 150,
+        width: 250,
+        fontSize: 18,
+        fontFamily: 'Arial',
+        fill: brushColor === '#ffffff' ? '#000000' : brushColor,
+        borderColor: '#c9a84c',
+        cornerColor: '#c9a84c',
+        cornerSize: 8,
+        transparentCorners: false
+      });
+      canvas.add(text);
+      canvas.setActiveObject(text);
       canvas.renderAll();
       saveHistoryState(canvas);
+    } catch (error) {
+      console.error('Error adding textbox:', error);
     }
-  };
+  }, [canvas, brushColor, saveHistoryState]);
 
-  // Import logo/image from device
-  const handleLogoImport = (e) => {
+  const addRectangle = useCallback(() => {
+    if (!canvas) return;
+    try {
+      const rect = new fabric.Rect({
+        left: 150,
+        top: 150,
+        width: 120,
+        height: 80,
+        fill: 'transparent',
+        stroke: brushColor === '#ffffff' ? '#000000' : brushColor,
+        strokeWidth: brushSize,
+        borderColor: '#c9a84c',
+        cornerColor: '#c9a84c',
+        cornerSize: 8,
+        transparentCorners: false
+      });
+      canvas.add(rect);
+      canvas.setActiveObject(rect);
+      canvas.renderAll();
+      saveHistoryState(canvas);
+    } catch (error) {
+      console.error('Error adding rectangle:', error);
+    }
+  }, [canvas, brushColor, brushSize, saveHistoryState]);
+
+  const addCircle = useCallback(() => {
+    if (!canvas) return;
+    try {
+      const circle = new fabric.Circle({
+        left: 150,
+        top: 150,
+        radius: 50,
+        fill: 'transparent',
+        stroke: brushColor === '#ffffff' ? '#000000' : brushColor,
+        strokeWidth: brushSize,
+        borderColor: '#c9a84c',
+        cornerColor: '#c9a84c',
+        cornerSize: 8,
+        transparentCorners: false
+      });
+      canvas.add(circle);
+      canvas.setActiveObject(circle);
+      canvas.renderAll();
+      saveHistoryState(canvas);
+    } catch (error) {
+      console.error('Error adding circle:', error);
+    }
+  }, [canvas, brushColor, brushSize, saveHistoryState]);
+
+  const deleteSelected = useCallback(() => {
+    if (!canvas) return;
+    try {
+      const activeObject = canvas.getActiveObject();
+      if (activeObject) {
+        canvas.remove(activeObject);
+        canvas.discardActiveObject();
+        canvas.renderAll();
+        saveHistoryState(canvas);
+      }
+    } catch (error) {
+      console.error('Error deleting object:', error);
+    }
+  }, [canvas, saveHistoryState]);
+
+  const handleLogoImport = useCallback((e) => {
     const file = e.target.files[0];
     if (!file || !canvas) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      fabric.Image.fromURL(event.target.result, (img) => {
-        const scale = Math.min(180 / img.width, 180 / img.height);
-        img.set({
-          left: 200,
-          top: 200,
-          scaleX: scale,
-          scaleY: scale,
-          borderColor: '#c9a84c',
-          cornerColor: '#c9a84c',
-          cornerSize: 8,
-          transparentCorners: false
-        });
-        canvas.add(img);
-        canvas.setActiveObject(img);
-        canvas.renderAll();
-        saveHistoryState(canvas);
-      });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = null; // Clear uploader
-  };
+    if (file.size > CONFIG.MAX_FILE_SIZE) {
+      Swal.fire('Error', 'File too large. Maximum 50MB allowed.', 'error');
+      return;
+    }
 
-  // Digital Signature Modal Handlers
-  const signatureStart = (e) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        fabric.Image.fromURL(event.target.result, (img) => {
+          try {
+            const scale = Math.min(180 / img.width, 180 / img.height);
+            img.set({
+              left: 200,
+              top: 200,
+              scaleX: scale,
+              scaleY: scale,
+              borderColor: '#c9a84c',
+              cornerColor: '#c9a84c',
+              cornerSize: 8,
+              transparentCorners: false
+            });
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            saveHistoryState(canvas);
+          } catch (error) {
+            console.error('Error adding image to canvas:', error);
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+      e.target.value = null;
+    } catch (error) {
+      console.error('Error importing logo:', error);
+    }
+  }, [canvas, saveHistoryState]);
+
+  // ============================================
+  // SIGNATURE HANDLING
+  // ============================================
+
+  const signatureStart = useCallback((e) => {
     if (e.type === 'touchstart') e.preventDefault();
     const sigCanvas = signatureCanvasRef.current;
     if (!sigCanvas) return;
-    
-    const ctx = sigCanvas.getContext('2d');
-    const coords = getSigCanvasCoords(e);
-    ctx.beginPath();
-    ctx.moveTo(coords.x, coords.y);
-    setIsSigning(true);
-  };
 
-  const signatureMove = (e) => {
+    try {
+      const ctx = sigCanvas.getContext('2d');
+      const coords = getSigCanvasCoords(e);
+      ctx.beginPath();
+      ctx.moveTo(coords.x, coords.y);
+      setIsSigning(true);
+    } catch (error) {
+      console.error('Error starting signature:', error);
+    }
+  }, []);
+
+  const signatureMove = useCallback((e) => {
     if (e.type === 'touchmove') e.preventDefault();
     if (!isSigning) return;
-    
+
     const sigCanvas = signatureCanvasRef.current;
     if (!sigCanvas) return;
-    
-    const ctx = sigCanvas.getContext('2d');
-    const coords = getSigCanvasCoords(e);
-    ctx.lineTo(coords.x, coords.y);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-  };
 
-  const signatureEnd = (e) => {
+    try {
+      const ctx = sigCanvas.getContext('2d');
+      const coords = getSigCanvasCoords(e);
+      ctx.lineTo(coords.x, coords.y);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    } catch (error) {
+      console.error('Error during signature move:', error);
+    }
+  }, [isSigning]);
+
+  const signatureEnd = useCallback((e) => {
     if (e.type === 'touchend') e.preventDefault();
     if (isSigning) {
       setIsSigning(false);
@@ -460,21 +765,21 @@ const DocumentEditor = ({
         setSignatureData(sigCanvas.toDataURL());
       }
     }
-  };
+  }, [isSigning]);
 
-  const clearSignature = () => {
+  const clearSignature = useCallback(() => {
     const sigCanvas = signatureCanvasRef.current;
     if (sigCanvas) {
       const ctx = sigCanvas.getContext('2d');
       ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
       setSignatureData(null);
     }
-  };
+  }, []);
 
   const getSigCanvasCoords = (e) => {
     const sigCanvas = signatureCanvasRef.current;
     const rect = sigCanvas.getBoundingClientRect();
-    
+
     let clientX, clientY;
     if (e.touches && e.touches.length > 0) {
       clientX = e.touches[0].clientX;
@@ -483,54 +788,64 @@ const DocumentEditor = ({
       clientX = e.clientX;
       clientY = e.clientY;
     }
-    
+
     return {
       x: clientX - rect.left,
       y: clientY - rect.top
     };
   };
 
-  // Place Signature Image on Canvas
-  const applySignature = () => {
+  const applySignature = useCallback(() => {
     if (!canvas || !signatureData) return;
-    
-    fabric.Image.fromURL(signatureData, (img) => {
-      img.set({
-        left: 200,
-        top: 200,
-        scaleX: 0.6,
-        scaleY: 0.6,
-        borderColor: '#c9a84c',
-        cornerColor: '#c9a84c',
-        cornerSize: 8,
-        transparentCorners: false
-      });
-      canvas.add(img);
-      canvas.setActiveObject(img);
-      canvas.renderAll();
-      saveHistoryState(canvas);
-      
-      setShowSignatureModal(false);
-      setSignatureData(null);
-    });
-  };
 
-  // Save document to server (persisted in tenant uploads directory)
-  const saveDocument = async () => {
-    if (!canvas) return;
+    try {
+      fabric.Image.fromURL(signatureData, (img) => {
+        try {
+          img.set({
+            left: 200,
+            top: 200,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            borderColor: '#c9a84c',
+            cornerColor: '#c9a84c',
+            cornerSize: 8,
+            transparentCorners: false
+          });
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+          saveHistoryState(canvas);
+
+          setShowSignatureModal(false);
+          setSignatureData(null);
+        } catch (error) {
+          console.error('Error applying signature:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Error in applySignature:', error);
+    }
+  }, [canvas, signatureData, saveHistoryState]);
+
+  // ============================================
+  // DOCUMENT OPERATIONS
+  // ============================================
+
+  const saveDocument = useCallback(async () => {
+    if (!canvas || !tenantInfo.slug) return;
+
     setIsSaving(true);
-    
+
     try {
       const canvasState = JSON.stringify(canvas.toJSON());
       const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
-      
+
       let response;
       const doc = documentRef.current;
-      
+
       if (doc?.id) {
-        // Save existing document: Update metadata & replace image file on server
         response = await axios.put(
-          `${API_BASE_URL}/edocuments/${doc.id}`,
+          `${CONFIG.API_BASE_URL}/edocuments/${doc.id}`,
           {
             title: documentTitle,
             canvasState: canvasState,
@@ -538,99 +853,159 @@ const DocumentEditor = ({
             status: 'completed',
             fieldValues: fieldValues
           },
-          { headers: { 'x-tenant-slug': tenantSlug } }
+          {
+            headers: {
+              'x-tenant-slug': tenantInfo.slug,
+              'Content-Type': 'application/json'
+            },
+            timeout: 30000
+          }
         );
       } else {
-        // Save new document: Create document row & write file to disk
         const formData = new FormData();
         const blob = dataURItoBlob(dataUrl);
-        
+
         let filename = 'document.png';
         if (fileRef.current) {
           filename = fileRef.current.name.replace(/\.[^/.]+$/, "") + "_edited.png";
         } else if (templateRef.current) {
           filename = templateRef.current.name.toLowerCase().replace(/[^a-z0-9]/gi, '_') + "_document.png";
         }
-        
+
         formData.append('document', blob, filename);
         formData.append('title', documentTitle);
         formData.append('description', `Edited scanned document: ${documentTitle}`);
-        formData.append('documentType', templateRef.current?.type || 'invoice');
+        formData.append('documentType', templateRef.current?.type || 'document');
         formData.append('canvasState', canvasState);
         formData.append('fieldValues', JSON.stringify(fieldValues));
 
         response = await axios.post(
-          `${API_BASE_URL}/edocuments`,
+          `${CONFIG.API_BASE_URL}/edocuments`,
           formData,
-          { 
-            headers: { 
-              'x-tenant-slug': tenantSlug,
+          {
+            headers: {
+              'x-tenant-slug': tenantInfo.slug,
               'Content-Type': 'multipart/form-data'
-            } 
+            },
+            timeout: 30000
           }
         );
       }
 
       if (response.data?.success) {
+        setIsDirty(false);
+        setLastSaveTime(new Date().toLocaleTimeString());
         Swal.fire({
           icon: 'success',
           title: 'Document Saved!',
-          text: 'The document has been securely stored for this tenant.',
-          confirmButtonColor: '#C9A84C'
+          text: 'Your document has been securely stored.',
+          confirmButtonColor: '#C9A84C',
+          timer: 2000
         });
         if (onSave) onSave(response.data.data);
       }
     } catch (error) {
       console.error('Error saving document:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to save document';
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Failed to save document'
+        title: 'Save Failed',
+        text: errorMsg,
+        confirmButtonColor: '#C9A84C'
       });
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [canvas, tenantInfo, documentTitle, fieldValues, onSave]);
 
-  // Export / Download PNG Image
-  const downloadPNG = () => {
+  const downloadPNG = useCallback(() => {
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `${documentTitle.replace(/[^a-z0-9]/gi, '_')}.png`;
-    a.click();
-  };
+    try {
+      const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${documentTitle.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.png`;
+      a.click();
+    } catch (error) {
+      console.error('Error downloading PNG:', error);
+      Swal.fire('Error', 'Failed to download document', 'error');
+    }
+  }, [canvas, documentTitle]);
 
-  // Print Document
-  const printDocument = () => {
+  const printDocument = useCallback(() => {
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Print - ${documentTitle}</title>
-          <style>
-            body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-            img { max-width: 100%; height: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-            @media print {
-              img { max-width: 100%; height: auto; box-shadow: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <img src="${dataUrl}" onload="window.print(); window.close();" />
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
+    try {
+      const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print - ${documentTitle}</title>
+            <style>
+              body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+              img { max-width: 100%; height: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+              @media print {
+                img { max-width: 100%; height: auto; box-shadow: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${dataUrl}" onload="window.print(); window.close();" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (error) {
+      console.error('Error printing document:', error);
+      Swal.fire('Error', 'Failed to print document', 'error');
+    }
+  }, [canvas, documentTitle]);
+
+  // ============================================
+  // RENDER
+  // ============================================
 
   const colorPresets = [
-    '#000000', '#FFFFFF', '#D97706', '#DC2626', '#2563EB', '#16A34A', 
+    '#000000', '#FFFFFF', '#D97706', '#DC2626', '#2563EB', '#16A34A',
     '#7C3AED', '#DB2777', '#4B5563', '#0369A1'
   ];
+
+  if (loadError || securityStatus === 'error') {
+    return (
+      <div style={editorContainerStyle}>
+        <div style={{ ...headerStyle, justifyContent: 'flex-end', gap: '10px' }}>
+          <button onClick={onClose} style={{ ...actionButtonStyle, backgroundColor: '#b91c1c', color: '#fff' }}>
+            <X size={16} /> Close
+          </button>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', color: '#ef4444' }}>
+            <AlertCircle size={64} style={{ marginBottom: '16px', opacity: 0.5 }} />
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Unable to Load Editor</h3>
+            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{loadError || 'Security verification failed'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div style={editorContainerStyle}>
+        <div style={{ ...headerStyle, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ ...actionButtonStyle, backgroundColor: '#b91c1c', color: '#fff' }}>
+            <X size={16} /> Close
+          </button>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+            <div style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</div>
+            <p>Initializing editor...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={editorContainerStyle}>
@@ -643,49 +1018,70 @@ const DocumentEditor = ({
             onChange={(e) => setDocumentTitle(e.target.value)}
             style={titleInputStyle}
             placeholder="Document Name"
+            disabled={isLoading}
           />
           <span style={{ color: '#6b7280', fontSize: '12px' }}>
             {templateRef.current?.name && `| Template: ${templateRef.current.name}`}
           </span>
+          {isDirty && (
+            <span style={{ color: '#fbbf24', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              ● Unsaved changes
+            </span>
+          )}
+          {isAutoSaving && (
+            <span style={{ color: '#60a5fa', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Cloud size={12} /> Auto-saving...
+            </span>
+          )}
+          {lastSaveTime && !isDirty && (
+            <span style={{ color: '#10b981', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Check size={12} /> Saved at {lastSaveTime}
+            </span>
+          )}
+          {securityStatus === 'verified' && (
+            <span style={{ color: '#10b981', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Lock size={12} /> {tenantInfo.slug}
+            </span>
+          )}
         </div>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Zoom Controls */}
-          <button onClick={() => setZoom(Math.max(50, zoom - 15))} style={actionButtonStyle} title="Zoom Out">
+          <button onClick={() => setZoom(Math.max(50, zoom - 15))} style={actionButtonStyle} title="Zoom Out" disabled={isLoading}>
             <ZoomOut size={16} />
           </button>
           <span style={{ color: '#9ca3af', fontSize: '13px', minWidth: '45px', textAlign: 'center', fontWeight: 600 }}>
             {zoom}%
           </span>
-          <button onClick={() => setZoom(Math.min(200, zoom + 15))} style={actionButtonStyle} title="Zoom In">
+          <button onClick={() => setZoom(Math.min(200, zoom + 15))} style={actionButtonStyle} title="Zoom In" disabled={isLoading}>
             <ZoomIn size={16} />
           </button>
-          
+
           <div style={dividerStyle} />
-          
+
           {/* Undo / Redo */}
-          <button onClick={handleUndo} disabled={!canUndo} style={{ ...actionButtonStyle, opacity: canUndo ? 1 : 0.4 }} title="Undo">
+          <button onClick={handleUndo} disabled={!canUndo || isLoading} style={{ ...actionButtonStyle, opacity: canUndo ? 1 : 0.4 }} title="Undo (Ctrl+Z)">
             <Undo size={16} />
           </button>
-          <button onClick={handleRedo} disabled={!canRedo} style={{ ...actionButtonStyle, opacity: canRedo ? 1 : 0.4 }} title="Redo">
+          <button onClick={handleRedo} disabled={!canRedo || isLoading} style={{ ...actionButtonStyle, opacity: canRedo ? 1 : 0.4 }} title="Redo (Ctrl+Y)">
             <Redo size={16} />
           </button>
-          
+
           <div style={dividerStyle} />
-          
+
           {/* Save / Export / Close */}
-          <button onClick={saveDocument} disabled={isSaving} style={{ ...actionButtonStyle, backgroundColor: '#059669', color: '#fff' }} title="Save Document">
+          <button onClick={saveDocument} disabled={isSaving || isLoading} style={{ ...actionButtonStyle, backgroundColor: '#059669', color: '#fff' }} title="Save Document (Ctrl+S)">
             <Save size={16} style={{ marginRight: '6px' }} />
             {isSaving ? 'Saving...' : 'Save'}
           </button>
-          <button onClick={downloadPNG} style={actionButtonStyle} title="Download PNG">
+          <button onClick={downloadPNG} style={actionButtonStyle} title="Download PNG" disabled={isLoading}>
             <Download size={16} />
           </button>
-          <button onClick={printDocument} style={actionButtonStyle} title="Print Document">
+          <button onClick={printDocument} style={actionButtonStyle} title="Print Document" disabled={isLoading}>
             <Printer size={16} />
           </button>
-          
-          <button onClick={onClose} style={{ ...actionButtonStyle, backgroundColor: '#b91c1c', color: '#fff' }} title="Close Editor">
+
+          <button onClick={onClose} style={{ ...actionButtonStyle, backgroundColor: '#b91c1c', color: '#fff' }} title="Close Editor" disabled={isLoading}>
             <X size={16} />
           </button>
         </div>
@@ -693,64 +1089,70 @@ const DocumentEditor = ({
 
       {/* Main Workspace Area */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        
+
         {/* Left Toolbar */}
         <div style={toolbarStyle}>
           <h4 style={toolbarHeadingStyle}>Tools</h4>
-          
+
           <div style={toolGroupStyle}>
             <ToolButton
               icon={<Move size={18} />}
               active={activeTool === 'select'}
               onClick={() => setActiveTool('select')}
               title="Select / Move Elements"
+              disabled={isLoading}
             />
             <ToolButton
               icon={<Type size={18} />}
               active={activeTool === 'text'}
               onClick={() => { setActiveTool('select'); addTextBox(); }}
               title="Add Editable Text"
+              disabled={isLoading}
             />
             <ToolButton
               icon={<Pen size={18} />}
               active={activeTool === 'pen'}
               onClick={() => setActiveTool('pen')}
               title="Freehand Pencil"
+              disabled={isLoading}
             />
             <ToolButton
               icon={<Eraser size={18} />}
               active={activeTool === 'eraser'}
               onClick={() => setActiveTool('eraser')}
               title="Eraser (White Brush)"
+              disabled={isLoading}
             />
             <ToolButton
               icon={<Square size={18} />}
               active={activeTool === 'rect'}
               onClick={() => { setActiveTool('select'); addRectangle(); }}
               title="Draw Rectangle"
+              disabled={isLoading}
             />
             <ToolButton
               icon={<Circle size={18} />}
               active={activeTool === 'circle'}
               onClick={() => { setActiveTool('select'); addCircle(); }}
               title="Draw Circle"
+              disabled={isLoading}
             />
           </div>
 
           <div style={dividerHorizontalStyle} />
-          
+
           {/* Signatures & Images */}
           <h4 style={toolbarHeadingStyle}>Insert</h4>
           <div style={toolGroupStyle}>
-            <button onClick={() => { setActiveTool('select'); setShowSignatureModal(true); }} style={toolbarSquareButtonStyle} title="Add Signature">
+            <button onClick={() => { setActiveTool('select'); setShowSignatureModal(true); }} style={toolbarSquareButtonStyle} title="Add Signature" disabled={isLoading}>
               <Signature size={18} />
               <span style={{ fontSize: '10px', marginTop: '4px' }}>Signature</span>
             </button>
-            <button onClick={() => fileInputRef.current?.click()} style={toolbarSquareButtonStyle} title="Upload Logo">
+            <button onClick={() => fileInputRef.current?.click()} style={toolbarSquareButtonStyle} title="Upload Logo" disabled={isLoading}>
               <ImageIcon size={18} />
               <span style={{ fontSize: '10px', marginTop: '4px' }}>Logo</span>
             </button>
-            <input 
+            <input
               type="file"
               ref={fileInputRef}
               onChange={handleLogoImport}
@@ -778,6 +1180,7 @@ const DocumentEditor = ({
                   padding: 0
                 }}
                 title={color}
+                disabled={isLoading}
               />
             ))}
           </div>
@@ -793,12 +1196,13 @@ const DocumentEditor = ({
             value={brushSize}
             onChange={(e) => setBrushSize(parseInt(e.target.value))}
             style={{ width: '100%', accentColor: '#c9a84c', cursor: 'pointer' }}
+            disabled={isLoading}
           />
 
           {selectedObject && (
             <>
               <div style={dividerHorizontalStyle} />
-              <button onClick={deleteSelected} style={{ ...toolbarSquareButtonStyle, backgroundColor: '#7f1d1d', color: '#fca5a5', width: '100%', height: '40px' }} title="Delete Element">
+              <button onClick={deleteSelected} style={{ ...toolbarSquareButtonStyle, backgroundColor: '#7f1d1d', color: '#fca5a5', width: '100%', height: '40px' }} title="Delete Element" disabled={isLoading}>
                 <Trash2 size={16} style={{ marginRight: '6px' }} />
                 Delete Selected
               </button>
@@ -835,7 +1239,7 @@ const DocumentEditor = ({
                 <X size={18} />
               </button>
             </div>
-            
+
             <div style={signaturePadWrapperStyle}>
               <canvas
                 ref={signatureCanvasRef}
@@ -860,7 +1264,7 @@ const DocumentEditor = ({
                 }}
               />
             </div>
-            
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={clearSignature} style={{ ...modalBtnStyle, backgroundColor: '#4b5563' }}>
                 Clear
@@ -868,12 +1272,12 @@ const DocumentEditor = ({
               <button onClick={() => setShowSignatureModal(false)} style={{ ...modalBtnStyle, backgroundColor: '#374151' }}>
                 Cancel
               </button>
-              <button 
-                onClick={applySignature} 
-                disabled={!signatureData} 
-                style={{ 
-                  ...modalBtnStyle, 
-                  backgroundColor: signatureData ? '#c9a84c' : '#4b5563', 
+              <button
+                onClick={applySignature}
+                disabled={!signatureData}
+                style={{
+                  ...modalBtnStyle,
+                  backgroundColor: signatureData ? '#c9a84c' : '#4b5563',
                   color: signatureData ? '#1e293b' : '#9ca3af',
                   fontWeight: 600
                 }}
@@ -889,14 +1293,17 @@ const DocumentEditor = ({
   );
 };
 
-// Styling Variables (Luxurious dark funeral home layout)
+// ============================================
+// STYLING (Production-Grade)
+// ============================================
+
 const editorContainerStyle = {
   position: 'fixed',
   top: 0,
   left: 0,
   right: 0,
   bottom: 0,
-  backgroundColor: '#0f172a', // deep charcoal slate
+  backgroundColor: '#0f172a',
   zIndex: 1000,
   display: 'flex',
   flexDirection: 'column',
@@ -909,8 +1316,10 @@ const headerStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  borderBottom: '2px solid #c9a84c', // subtle gold border
-  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+  borderBottom: '2px solid #c9a84c',
+  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+  flexWrap: 'wrap',
+  gap: '10px'
 };
 
 const titleInputStyle = {
@@ -999,11 +1408,11 @@ const canvasScrollWrapperStyle = {
   backgroundColor: '#0f172a'
 };
 
-// Tool Button Component
-const ToolButton = ({ icon, active, onClick, title }) => (
+const ToolButton = ({ icon, active, onClick, title, disabled }) => (
   <button
     onClick={onClick}
     title={title}
+    disabled={disabled}
     style={{
       width: '100%',
       height: '42px',
@@ -1011,12 +1420,13 @@ const ToolButton = ({ icon, active, onClick, title }) => (
       border: active ? '1.5px solid #c9a84c' : '1px solid #475569',
       backgroundColor: active ? 'rgba(201, 168, 76, 0.15)' : '#334155',
       color: active ? '#c9a84c' : '#cbd5e1',
-      cursor: 'pointer',
+      cursor: disabled ? 'not-allowed' : 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       transition: 'all 0.2s ease',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      opacity: disabled ? 0.5 : 1
     }}
   >
     {icon}
@@ -1039,7 +1449,6 @@ const toolbarSquareButtonStyle = {
   boxSizing: 'border-box'
 };
 
-// Signature Modal Styles
 const modalOverlayStyle = {
   position: 'fixed',
   top: 0,
