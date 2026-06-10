@@ -1588,7 +1588,7 @@ const DispatchSection = ({ deceasedId, dispatchData, onUpdate }) => {
               <div style={{
                 background: Colors.progressBg,
                 padding: '1rem',
-                border-radius: '0.5rem',
+                borderRadius: '0.5rem',
                 marginBottom: '1rem',
                 maxHeight: '150px',
                 overflowY: 'auto',

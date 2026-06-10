@@ -1,8 +1,5 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
 import moment from 'moment';
 import './CalendarPage.css';
 import { useParams } from 'react-router-dom';
@@ -36,7 +33,6 @@ const CONFIG = {
   }
 };
 
-
 // ============================================
 // TOAST NOTIFICATION SYSTEM
 // ============================================
@@ -58,12 +54,26 @@ const ToastContainer = ({ toasts, removeToast }) => {
 };
 
 // ============================================
+// LOADING COMPONENT
+// ============================================
+const LoadingCalendar = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+    <div>Loading Calendar...</div>
+  </div>
+);
+
+// ============================================
 // MAIN CALENDAR COMPONENT
 // ============================================
 const CalendarPage = () => {
   const { slug } = useParams();
   const { tenantData } = useTenantStore();
   const calendarRef = useRef(null);
+  const [FullCalendarLoaded, setFullCalendarLoaded] = useState(false);
+  const [FullCalendar, setFullCalendar] = useState(null);
+  const [dayGridPlugin, setDayGridPlugin] = useState(null);
+  const [timeGridPlugin, setTimeGridPlugin] = useState(null);
+  const [interactionPlugin, setInteractionPlugin] = useState(null);
   
   // State
   const [events, setEvents] = useState([]);
@@ -102,6 +112,53 @@ const CalendarPage = () => {
     timeFormat24: false,
     dailyReminders: true
   });
+
+  // Load FullCalendar from local public directory
+  useEffect(() => {
+    const loadFullCalendar = async () => {
+      // Check if already loaded
+      if (window.FullCalendar) {
+        setFullCalendar(() => window.FullCalendar);
+        setDayGridPlugin(() => window.FullCalendarDayGrid);
+        setTimeGridPlugin(() => window.FullCalendarTimeGrid);
+        setInteractionPlugin(() => window.FullCalendarInteraction);
+        setFullCalendarLoaded(true);
+        return;
+      }
+
+      // Load CSS from local files
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/resources/fullcalendar/main.min.css';
+      document.head.appendChild(link);
+
+      // Load core script
+      const coreScript = document.createElement('script');
+      coreScript.src = '/resources/fullcalendar/main.min.js';
+      await new Promise((resolve) => {
+        coreScript.onload = resolve;
+        document.head.appendChild(coreScript);
+      });
+
+      // Wait for FullCalendar to be available
+      await new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (window.FullCalendar) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+      });
+
+      setFullCalendar(() => window.FullCalendar);
+      setDayGridPlugin(() => window.FullCalendarDayGrid);
+      setTimeGridPlugin(() => window.FullCalendarTimeGrid);
+      setInteractionPlugin(() => window.FullCalendarInteraction);
+      setFullCalendarLoaded(true);
+    };
+
+    loadFullCalendar();
+  }, []);
 
   // ============================================
   // TOAST HELPERS
@@ -144,9 +201,11 @@ const CalendarPage = () => {
   }, []);
 
   useEffect(() => {
-    loadEvents();
-    loadStats();
-  }, [loadEvents, loadStats]);
+    if (FullCalendarLoaded) {
+      loadEvents();
+      loadStats();
+    }
+  }, [FullCalendarLoaded, loadEvents, loadStats]);
 
   // ============================================
   // EVENT HANDLERS
@@ -212,7 +271,7 @@ const CalendarPage = () => {
 
   const handleViewChange = (view) => {
     setCurrentView(view);
-    if (calendarRef.current) {
+    if (calendarRef.current && calendarRef.current.getApi) {
       const calendar = calendarRef.current.getApi();
       calendar.changeView(view);
     }
@@ -314,7 +373,7 @@ const CalendarPage = () => {
   // RENDER HELPERS
   // ============================================
   const renderEventContent = (eventInfo) => {
-    const entryType = eventInfo.event.extendedProps.entryType || 'interment';
+    const entryType = eventInfo.event.extendedProps?.entryType || 'interment';
     const typeConfig = CONFIG.ENTRY_TYPES[entryType] || CONFIG.ENTRY_TYPES.interment;
     
     return (
@@ -343,9 +402,13 @@ const CalendarPage = () => {
     .filter(e => moment(e.start).isAfter(new Date()))
     .slice(0, 5);
 
-  // ============================================
-  // RENDER
-  // ============================================
+  // Don't render until FullCalendar is loaded
+  if (!FullCalendarLoaded || !FullCalendar || !dayGridPlugin || !timeGridPlugin || !interactionPlugin) {
+    return <LoadingCalendar />;
+  }
+
+  const FullCalendarComponent = FullCalendar.default || FullCalendar;
+
   return (
     <div className="calendar-page">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -395,7 +458,7 @@ const CalendarPage = () => {
                     <input
                       type="checkbox"
                       checked={filters.includes(key)}
-                      onChange={() => handleFilterChange(key)}
+                      onChange={() => handleFilterChange(key)}叔
                     />
                     <span className="filter-color" style={{ backgroundColor: config.color }} />
                     <span className="filter-label">{config.label}</span>
@@ -513,7 +576,7 @@ const CalendarPage = () => {
 
           {/* Calendar Container */}
           <div className="calendar-wrapper">
-            <FullCalendar
+            <FullCalendarComponent
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView={settings.defaultView}
@@ -525,7 +588,6 @@ const CalendarPage = () => {
               selectMirror={true}
               dayMaxEvents={true}
               weekends={settings.showWeekends}
-              initialTimeFormat={{ hour: settings.timeFormat24 ? 2 : 1, minute: '2-digit', meridiem: !settings.timeFormat24 }}
               slotDuration="00:30:00"
               slotMinTime="06:00:00"
               slotMaxTime="22:00:00"
@@ -574,6 +636,7 @@ const CalendarPage = () => {
         </button>
       </nav>
 
+      {/* Rest of your modals remain the same... */}
       {/* Event Modal */}
       {modalOpen && (
         <div className="modal-overlay active" onClick={() => setModalOpen(false)}>

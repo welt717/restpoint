@@ -1379,5 +1379,6 @@ const PostmortemInfoSection = ({ onSave, onCancel }) => {
       )}
     </Container>
   );
+}
 
 export default PostmortemInfoSection;

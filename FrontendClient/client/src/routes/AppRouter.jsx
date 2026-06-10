@@ -17,7 +17,6 @@ import CoffinInventory from '../components/coffins/coffininventory';
 import AllDeceasedPage from '../components/deceasedinfo/listDeceased';
 import NotFound from '../components/common/NotFound';
 import DeceasedDetails from '../components/deceasedprofile/deceasedDetailPage';
-import AIAssistant from '../components/ai/AIAssistant';
 import DeceasedInfoSection from '../components/deceasedinfo/deceasedInfoSection';
 
 // Import marketplace components directly (not lazy) for reliability
