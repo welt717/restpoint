@@ -28,8 +28,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import * as pdfjsLib from 'pdfjs-dist';
-import { fabric } from 'fabric';
-
+import * as fabric from "fabric";
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
