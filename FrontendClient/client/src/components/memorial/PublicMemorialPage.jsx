@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { Heart, MessageCircle, Share2, Clock, MapPin, Calendar } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Flame, Clock, MapPin, Calendar } from 'lucide-react';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 
@@ -169,6 +169,8 @@ const PostActions = styled.div`
   margin-top: 1rem;
 `;
 
+
+
 const PostButton = styled.button`
   padding: 0.6rem 1.5rem;
   background: linear-gradient(135deg, #A67C52 0%, #C9A876 100%);
@@ -258,6 +260,8 @@ const PostReactions = styled.div`
   border-top: 1px solid rgba(148, 163, 184, 0.1);
 `;
 
+
+
 const ReactionBtn = styled.button`
   display: flex;
   align-items: center;
@@ -329,6 +333,8 @@ const PublicMemorialPage = () => {
         ENDPOINTS.PUBLIC.DECEASED_RECORD(tenantSlug, deceasedId),
         { headers: { 'x-tenant-slug': tenantSlug } }
       );
+      
+
       setDeceased(response.data?.data || response.data);
       
       // Fetch real candles count
