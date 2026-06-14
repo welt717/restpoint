@@ -17,11 +17,8 @@ import {
   Gauge,
   Settings,
   Send,
-<<<<<<< HEAD
 MessageSquare as WhatsApp,
-=======
   MessageSquare as WhatsApp,
->>>>>>> 8bd82230a86c8e76ea5544b6866f9e7efb1543b3
   Users,
   Clock,
   AlertCircle,
