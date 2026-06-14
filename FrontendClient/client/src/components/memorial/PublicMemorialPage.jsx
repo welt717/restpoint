@@ -314,6 +314,7 @@ const PublicMemorialPage = () => {
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [candles, setCandles] = useState(0);
+  const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [shareUrl, setShareUrl] = useState('');
 
@@ -325,16 +326,56 @@ const PublicMemorialPage = () => {
   const fetchMemorialData = async () => {
     try {
       const response = await api.get(
-        ENDPOINTS.PUBLIC.DECEASED_RECORD(tenantSlug, deceasedId)
-      );
+        ENDPOINTS.PUBLIC.DECEASED_RECORD(tenantSlug, deceasedId),
         { headers: { 'x-tenant-slug': tenantSlug } }
       );
       setDeceased(response.data?.data || response.data);
-      setCandles(Math.floor(Math.random() * 50) + 10);
-      setPosts([
-        { id: 1, author: 'Family', content: 'In loving memory of our beloved. Your light will forever shine in our hearts.', time: '2 hours ago', likes: 24, comments: 8 },
-        { id: 2, author: 'Friends', content: 'Rest in peace. You will be deeply missed by all who knew you.', time: '5 hours ago', likes: 18, comments: 5 },
-      ]);
+      
+      // Fetch real candles count
+      try {
+        const candlesRes = await api.get(
+          ENDPOINTS.MEMORIAL.CANDLES(tenantSlug),
+          { headers: { 'x-tenant-slug': tenantSlug } }
+        );
+        setCandles(candlesRes.data?.count || candlesRes.data?.data?.length || 0);
+      } catch (e) {
+        setCandles(0);
+      }
+
+      // Fetch real condolences/posts
+      try {
+        const postsRes = await api.get(
+          ENDPOINTS.MEMORIAL.CONDOLENCES(tenantSlug),
+          { headers: { 'x-tenant-slug': tenantSlug } }
+        );
+        const apiPosts = postsRes.data?.data || postsRes.data || [];
+        setPosts(Array.isArray(apiPosts) ? apiPosts.map(p => ({
+          id: p.id,
+          author: p.author_name || p.name || 'Visitor',
+          content: p.message || p.content,
+          time: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'recent',
+          likes: p.likes || 0,
+          comments: p.comments || 0
+        })) : []);
+      } catch (e) {
+        setPosts([]);
+      }
+
+      // Fetch real funeral program from backend
+      try {
+        const programRes = await api.get(
+          ENDPOINTS.MEMORIAL.PROGRAM(tenantSlug),
+          { headers: { 'x-tenant-slug': tenantSlug } }
+        );
+        const progData = programRes.data?.data || programRes.data || null;
+        if (progData) {
+          // Handle both array format and object with events array
+          const events = Array.isArray(progData) ? progData : (progData.events || []);
+          setProgram(events.length > 0 ? events : null);
+        }
+      } catch (e) {
+        setProgram(null);
+      }
     } catch (error) {
       console.error('Error loading memorial:', error);
     } finally {
@@ -342,22 +383,51 @@ const PublicMemorialPage = () => {
     }
   };
 
-  const handleLightCandle = () => {
-    setCandles(prev => prev + 1);
+  const handleLightCandle = async () => {
+    try {
+      await api.post(
+        ENDPOINTS.MEMORIAL.LIGHT(tenantSlug),
+        {},
+        { headers: { 'x-tenant-slug': tenantSlug } }
+      );
+      setCandles(prev => prev + 1);
+    } catch (e) {
+      // Fallback to local count
+      setCandles(prev => prev + 1);
+    }
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!newPost.trim()) return;
-    const post = {
-      id: Date.now(),
-      author: 'Visitor',
-      content: newPost,
-      time: 'Just now',
-      likes: 0,
-      comments: 0,
-    };
-    setPosts(prev => [post, ...prev]);
-    setNewPost('');
+    try {
+      const res = await api.post(
+        ENDPOINTS.MEMORIAL.ADD_CONDOLENCE(tenantSlug),
+        { message: newPost, deceased_id: deceasedId },
+        { headers: { 'x-tenant-slug': tenantSlug } }
+      );
+      const newPostData = {
+        id: res.data?.id || Date.now(),
+        author: 'Visitor',
+        content: newPost,
+        time: 'Just now',
+        likes: 0,
+        comments: 0,
+      };
+      setPosts(prev => [newPostData, ...prev]);
+      setNewPost('');
+    } catch (e) {
+      // Fallback: Add locally
+      const post = {
+        id: Date.now(),
+        author: 'Visitor',
+        content: newPost,
+        time: 'Just now',
+        likes: 0,
+        comments: 0,
+      };
+      setPosts(prev => [post, ...prev]);
+      setNewPost('');
+    }
   };
 
   const handleShare = () => {
@@ -425,26 +495,18 @@ const PublicMemorialPage = () => {
       </CandleRow>
 
       <ContentArea>
-        {/* Funeral Program */}
-        <ProgramCard>
-          <ProgramTitle><Clock size={16} /> Order of Events</ProgramTitle>
-          <EventItem>
-            <EventTime>09:00 AM</EventTime>
-            <EventDesc>Service begins — Family & friends gather</EventDesc>
-          </EventItem>
-          <EventItem>
-            <EventTime>10:00 AM</EventTime>
-            <EventDesc>Prayers and hymns</EventDesc>
-          </EventItem>
-          <EventItem>
-            <EventTime>11:00 AM</EventTime>
-            <EventDesc>Eulogy and tributes</EventDesc>
-          </EventItem>
-          <EventItem>
-            <EventTime>12:00 PM</EventTime>
-            <EventDesc>Final farewell and burial ceremony</EventDesc>
-          </EventItem>
-        </ProgramCard>
+        {/* Funeral Program — pulled from backend, only shows if data exists */}
+        {program && program.length > 0 && (
+          <ProgramCard>
+            <ProgramTitle><Clock size={16} /> Order of Events</ProgramTitle>
+            {program.map((event, idx) => (
+              <EventItem key={idx}>
+                <EventTime>{event.time || event.event_time || `Event ${idx + 1}`}</EventTime>
+                <EventDesc>{event.description || event.title || event.event_name}</EventDesc>
+              </EventItem>
+            ))}
+          </ProgramCard>
+        )}
 
         {/* Post Form */}
         <PostForm>

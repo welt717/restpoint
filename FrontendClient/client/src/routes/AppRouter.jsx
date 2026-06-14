@@ -38,6 +38,9 @@ import ReportGenerator from '../components/reports/reportGenerator';
 // Import Call/Voice component
 import CallPage from '../components/call/CallPage';
 
+// Import Chemical Management
+import ChemicalsPage from '../components/chemicals/chemicals';
+
 // Loading fallback component
 const RouteLoadingFallback = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#F7F9FB' }}>
@@ -299,6 +302,13 @@ const TenantDashboardRoutes = ({ tenantData }) => {
         <Route path="reports" element={
           <DashboardLayout tenantData={tenantData}>
             <ReportGenerator />
+          </DashboardLayout>
+        } />
+        
+        {/* Chemical Management routes */}
+        <Route path="chemicals" element={
+          <DashboardLayout tenantData={tenantData}>
+            <ChemicalsPage />
           </DashboardLayout>
         } />
         

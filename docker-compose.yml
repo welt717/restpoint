@@ -283,8 +283,8 @@ services:
     ports:
       - "${MPESA_SERVICE_PORT:-5011}:5011"
     env_file:
-      - .env                   
-    depends_on:        
+      - .env
+    depends_on:
       redis:
         condition: service_healthy
       mariadb:
@@ -292,6 +292,7 @@ services:
     networks:
       - restpoint_net
     restart: unless-stopped
+
 
   # ============================================
   # NOTIFICATION SERVICE
@@ -302,7 +303,7 @@ services:
       dockerfile: services/notification-service/Dockerfile
     container_name: restpoint_notification
     ports:
-      - "${NOTIFICATION_SERVICE_PORT:-8111}:8111"
+      - "${NOTIFICATION_SERVICE_PORT:-5111}:5111"
     env_file:
       - .env
     depends_on:
@@ -323,7 +324,7 @@ services:
       dockerfile: services/qrcode-service/Dockerfile
     container_name: restpoint_qrcode
     ports:
-      - "${QR_CODE_SERVICE_PORT:-8012}:8012"
+      - "${QR_CODE_SERVICE_PORT:-5012}:5012"
     env_file:
       - .env
     depends_on:
@@ -335,6 +336,7 @@ services:
       - restpoint_net
     restart: unless-stopped
 
+
   # ============================================
   # SOCKETIO SERVICE
   # ============================================
@@ -344,7 +346,7 @@ services:
       dockerfile: services/socketio-service/Dockerfile
     container_name: restpoint_socketio
     ports:
-      - "${SOCKETIO_SERVICE_PORT:-8013}:8013"
+      - "${SOCKETIO_SERVICE_PORT:-5013}:5013"
     env_file:
       - .env
     depends_on:
@@ -365,7 +367,7 @@ services:
       dockerfile: services/visitors-service/Dockerfile
     container_name: restpoint_visitors
     ports:
-      - "${VISITORS_SERVICE_PORT:-8014}:8014"
+      - "${VISITORS_SERVICE_PORT:-5014}:5014"
     env_file:
       - .env
     depends_on:
@@ -386,7 +388,7 @@ services:
       dockerfile: services/bodycheckout-service/Dockerfile
     container_name: restpoint_bodycheckout
     ports:
-      - "${BODYCHECKOUT_SERVICE_PORT:-8015}:8015"
+      - "${BODYCHECKOUT_SERVICE_PORT:-5015}:5015"
     env_file:
       - .env
     depends_on:
@@ -407,7 +409,7 @@ services:
       dockerfile: services/extra-services/Dockerfile
     container_name: restpoint_extra
     ports:
-      - "${EXTRA_SERVICES_PORT:-8016}:8016"
+      - "${EXTRA_SERVICES_PORT:-5016}:5016"
     env_file:
       - .env
     depends_on:
@@ -428,7 +430,7 @@ services:
       dockerfile: services/updates/Dockerfile
     container_name: restpoint_updates
     ports:
-      - "${UPDATES_SERVICE_PORT:-8017}:8017"
+      - "${UPDATES_SERVICE_PORT:-5017}:5017"
     env_file:
       - .env
     depends_on:
@@ -443,17 +445,13 @@ services:
   # ============================================
   # CALL SERVICE
   # ============================================
-  
-
-  
-
   call-service:
     build:
       context: .
       dockerfile: services/call-service/Dockerfile
     container_name: restpoint_call
     ports:
-      - "${CALL_SERVICE_PORT:-8018}:8018"
+      - "${CALL_SERVICE_PORT:-5018}:5018"
     env_file:
       - .env
     depends_on:
@@ -474,7 +472,7 @@ services:
       dockerfile: services/portal-service/Dockerfile
     container_name: restpoint_portal
     ports:
-      - "${PORTAL_SERVICE_PORT:-5000}:5000"
+      - "${PORTAL_SERVICE_PORT:-5019}:5019"
     env_file:
       - .env
     depends_on:
@@ -487,9 +485,29 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # CHEMICAL SERVICE (Port 5105)
+  # ============================================
+  chemical-service:
+    build:
+      context: .
+      dockerfile: services/chemical-service/Dockerfile
+    container_name: restpoint_chemical
+    ports:
+      - "${CHEMICAL_SERVICE_PORT:-5105}:5105"
+    env_file:
+      - .env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - restpoint_net
+    restart: unless-stopped
+
+  # ============================================
   # FRONTEND - React UI (Port 8082)
   # Production: docker run -d --name restpoint-frontend -p 8082:8082 frontend
   # ============================================
+
   frontend:
     build:
       context: ./FrontendClient/client

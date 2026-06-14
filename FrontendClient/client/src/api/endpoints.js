@@ -222,6 +222,23 @@ export const ENDPOINTS = {
     CATEGORIES: `${API_PREFIX}/marketplace/categories`,
   },
 
+  // CHEMICALS - Chemical Management Module
+  CHEMICALS: {
+    LIST:        `${API_PREFIX}/chemicals`,
+    CREATE:      `${API_PREFIX}/chemicals`,
+    DETAIL:      (id) => `${API_PREFIX}/chemicals/${id}`,
+    UPDATE:      (id) => `${API_PREFIX}/chemicals/${id}`,
+    DELETE:      (id) => `${API_PREFIX}/chemicals/${id}`,
+    RECEIVE:     (id) => `${API_PREFIX}/chemicals/${id}/receive`,
+    ADJUST:      (id) => `${API_PREFIX}/chemicals/${id}/adjust`,
+    TRANSACTIONS:(id) => `${API_PREFIX}/chemicals/${id}/transactions`,
+    USAGE:       `${API_PREFIX}/chemicals/usage`,
+    USAGE_BY_DECEASED: (id) => `${API_PREFIX}/chemicals/usage/deceased/${id}`,
+    USAGE_REPORT:`${API_PREFIX}/chemicals/usage/report`,
+    DASHBOARD:   `${API_PREFIX}/chemicals/dashboard/summary`,
+    LOW_STOCK:   `${API_PREFIX}/chemicals/alerts/low-stock`,
+  },
+
   // E-DOCUMENTS - Template/Document editing via PHP backend
   EDOCUMENTS: {
     LIST:        `${API_PREFIX}/edocuments`,

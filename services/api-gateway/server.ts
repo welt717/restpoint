@@ -45,6 +45,7 @@ interface IServices {
   edocuments: string;
   calendar: string;
   search: string;
+  chemicals: string;
 }
 
 // Error handlers
@@ -87,6 +88,7 @@ const SERVICES: IServices = {
   bodycheckout: process.env.BODYCHECKOUT_SERVICE_URL || 'http://localhost:5015',
   calendar: process.env.CALENDAR_SERVICE_URL || 'http://localhost:5010',
   search: process.env.SEARCH_SERVICE_URL || 'http://localhost:5020',
+  chemicals: process.env.CHEMICAL_SERVICE_URL || 'http://localhost:5105',
 };
 
 // Rate limiters
@@ -258,10 +260,14 @@ app.use('/api/onboarding', createProxy(SERVICES.tenant, 'TENANT'));
 app.use('/api/v1/restpoint/deceased', createProxy(SERVICES.deceased, 'DECEASED'));
 
 // ============================================
-// EMBALMING SERVICE (Port 8105)
+// EMBALMING SERVICE (Port 5105)
 // ============================================
 app.use('/api/v1/restpoint/embalming', createProxy(SERVICES.embalming, 'EMBALMING'));
-app.use('/api/v1/restpoint/chemicals', createProxy(SERVICES.embalming, 'EMBALMING'));
+
+// ============================================
+// CHEMICAL SERVICE (Port 5105)
+// ============================================
+app.use('/api/v1/restpoint/chemicals', createProxy(SERVICES.chemicals, 'CHEMICAL'));
 
 // ============================================
 // INVOICES SERVICE (Port 8106)

@@ -31,7 +31,6 @@
   "include": [
     "shared/**/*",
     "packages/**/*",
-    "services/**/*",
     "scripts/**/*"
   ],
   "exclude": [
