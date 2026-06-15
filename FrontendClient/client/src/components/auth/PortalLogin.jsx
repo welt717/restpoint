@@ -4,9 +4,28 @@ import { authApi } from '../../api/authApi';
 
 /* ═══════════════════════════════════════════════════════════════
    REST POINT — Portal Login (Family Portal)
-   White background · Clean · Minimal
+   Consistent theme with Landing Page (Navy + Gold + White)
    Detects tenant from phone number (next of kin lookup)
    ═══════════════════════════════════════════════════════════════ */
+
+const C = {
+  navy900: '#0A1F3D',
+  navy800: '#0F2847',
+  navy700: '#1a3a52',
+  navy50:  '#F9FAFB',
+  char900: '#111827',
+  char700: '#374151',
+  char600: '#4B5563',
+  char500: '#6B7280',
+  char300: '#D1D5DB',
+  char200: '#E5E7EB',
+  char100: '#F3F4F6',
+  gold:    '#A67C52',
+  goldL:   '#C9A876',
+  goldD:   '#8B6340',
+  emerald: '#059669',
+  emeraldL:'#10B981',
+};
 
 function PortalLoginPage() {
   const navigate = useNavigate();
@@ -93,6 +112,8 @@ function PortalLoginPage() {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
         * {
           margin: 0;
           padding: 0;
@@ -100,13 +121,12 @@ function PortalLoginPage() {
         }
 
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          font-family: 'Inter', sans-serif;
           height: 100vh;
           overflow: hidden;
           background: linear-gradient(135deg, #0A1F3D 0%, #0F2847 100%);
         }
 
-        /* Navy background matching landing page */
         .portal {
           position: relative;
           width: 100%;
@@ -117,7 +137,27 @@ function PortalLoginPage() {
           justify-content: center;
         }
 
-        /* Content Container */
+        .portal::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image: linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+          background-size: 60px 60px;
+          pointer-events: none;
+        }
+
+        .portal-glow {
+          position: absolute;
+          top: -20%;
+          right: -10%;
+          width: 500px;
+          height: 500px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(166,124,82,.08) 0%, transparent 70%);
+          filter: blur(80px);
+          pointer-events: none;
+        }
+
         .content {
           position: relative;
           z-index: 2;
@@ -126,98 +166,131 @@ function PortalLoginPage() {
           padding: 0 24px;
         }
 
-        /* Logo Section */
+        .card {
+          background: white;
+          border-radius: 16px;
+          padding: 2.5rem;
+          box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6);
+          border: 1px solid #e5e7eb;
+        }
+
         .logo {
-          margin-bottom: 48px;
+          margin-bottom: 2rem;
           text-align: center;
         }
 
         .logo-icon {
           width: 64px;
           height: 64px;
-          background: rgba(4, 200, 0, 0.08);
+          background: rgba(5, 150, 105, 0.08);
           border-radius: 16px;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 20px;
-          border: 1px solid rgba(4, 200, 0, 0.15);
+          margin: 0 auto 16px;
+          border: 1px solid rgba(5, 150, 105, 0.15);
         }
 
         .logo-icon svg {
           width: 30px;
           height: 30px;
-          color: #04c800;
+          color: #059669;
         }
 
         .logo h1 {
-          font-size: 28px;
-          font-weight: 700;
-          color: #111;
-          letter-spacing: -0.5px;
+          font-family: 'Lora', Georgia, serif;
+          font-size: 1.8rem;
+          font-weight: 600;
+          color: #0A1F3D;
           margin-bottom: 8px;
         }
 
         .logo p {
-          font-size: 14px;
-          color: #666;
+          font-family: 'Inter', sans-serif;
+          font-size: 0.85rem;
+          color: #6B7280;
         }
 
-        /* Form */
+        .info {
+          background: rgba(5, 150, 105, 0.04);
+          border: 1px solid rgba(5, 150, 105, 0.1);
+          border-radius: 10px;
+          padding: 12px 16px;
+          font-size: 0.8rem;
+          color: #6B7280;
+          margin-bottom: 1.5rem;
+          text-align: center;
+          line-height: 1.5;
+        }
+
+        .info strong {
+          color: #059669;
+        }
+
         .form-group {
-          margin-bottom: 20px;
+          margin-bottom: 1.25rem;
         }
 
         .input-label {
           display: block;
-          font-size: 13px;
+          font-family: 'Inter', sans-serif;
+          font-size: 0.65rem;
           font-weight: 600;
-          color: #444;
+          color: #6B7280;
           margin-bottom: 8px;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
         }
 
         .input-field {
           width: 100%;
           padding: 14px 18px;
-          font-size: 15px;
-          background: #f8f9fa;
-          border: 1px solid #e9ecef;
+          font-family: 'Inter', sans-serif;
+          font-size: 1rem;
+          background: #F9FAFB;
+          border: 1px solid #E5E7EB;
           border-radius: 10px;
           outline: none;
           transition: all 0.2s;
-          color: #333;
+          color: #111827;
         }
 
         .input-field:focus {
           background: #ffffff;
-          border-color: #04c800;
-          box-shadow: 0 0 0 3px rgba(4, 200, 0, 0.1);
+          border-color: #A67C52;
+          box-shadow: 0 0 0 3px rgba(166,124,82,0.12);
         }
 
         .input-field::placeholder {
           color: #aaa;
         }
 
-        /* Button */
         .btn {
           width: 100%;
           padding: 14px 18px;
-          background: #04c800;
+          background: #0A1F3D;
           color: white;
-          font-size: 15px;
-          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
           border: none;
           border-radius: 10px;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.22s;
           margin-top: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 16px -4px rgba(10,31,61,0.4);
         }
 
         .btn:hover:not(:disabled) {
-          background: #03b300;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(4, 200, 0, 0.25);
+          background: #0F2847;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px -4px rgba(10,31,61,0.6);
         }
 
         .btn:disabled {
@@ -225,12 +298,11 @@ function PortalLoginPage() {
           cursor: not-allowed;
         }
 
-        /* Message */
         .message {
           padding: 12px 16px;
           border-radius: 10px;
-          font-size: 13px;
-          margin-bottom: 20px;
+          font-size: 0.8rem;
+          margin-bottom: 1.25rem;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -243,42 +315,25 @@ function PortalLoginPage() {
         }
 
         .message.success {
-          background: rgba(4, 200, 0, 0.08);
-          color: #04c800;
-          border: 1px solid rgba(4, 200, 0, 0.2);
+          background: rgba(5, 150, 105, 0.08);
+          color: #059669;
+          border: 1px solid rgba(5, 150, 105, 0.2);
         }
 
-        /* Info */
-        .info {
-          background: rgba(4, 200, 0, 0.04);
-          border: 1px solid rgba(4, 200, 0, 0.1);
-          border-radius: 10px;
-          padding: 12px 16px;
-          font-size: 12px;
-          color: #666;
-          margin-bottom: 20px;
-          text-align: center;
-        }
-
-        .info strong {
-          color: #04c800;
-        }
-
-        /* Footer */
         .footer {
-          margin-top: 40px;
+          margin-top: 1.5rem;
           text-align: center;
         }
 
         .footer a {
           color: #888;
           text-decoration: none;
-          font-size: 13px;
+          font-size: 0.78rem;
           transition: color 0.2s;
         }
 
         .footer a:hover {
-          color: #04c800;
+          color: #A67C52;
         }
 
         .footer span {
@@ -286,9 +341,19 @@ function PortalLoginPage() {
           margin: 0 8px;
         }
 
-        /* Spinner */
+        .divider {
+          height: 1px;
+          background: #E5E7EB;
+          margin: 1.25rem 0;
+        }
+
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         .spinner {
@@ -299,24 +364,22 @@ function PortalLoginPage() {
           border-radius: 50%;
           animation: spin 0.6s linear infinite;
           display: inline-block;
-          margin-right: 8px;
         }
 
-        /* Responsive */
         @media (max-width: 480px) {
           .content {
-            padding: 0 20px;
+            padding: 0 16px;
           }
-          
+          .card {
+            padding: 1.5rem;
+          }
           .logo h1 {
-            font-size: 24px;
+            font-size: 1.5rem;
           }
-          
           .logo-icon {
             width: 56px;
             height: 56px;
           }
-          
           .input-field, .btn {
             padding: 12px 16px;
           }
@@ -324,64 +387,72 @@ function PortalLoginPage() {
       `}</style>
 
       <div className="portal">
+        <div className="portal-glow"></div>
         <div className="content">
-          <div className="logo">
-            <div className="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-                <circle cx="12" cy="12" r="2" />
-              </svg>
-            </div>
-            <h1>Rest Point</h1>
-            <p>Family Memorial Portal</p>
-          </div>
-
-          <div className="info">
-            Enter the <strong>phone number</strong> of the next of kin registered with the funeral home. We'll locate your loved one's records automatically.
-          </div>
-
-          {message.text && (
-            <div className={`message ${message.type}`}>
-              <span>{message.type === 'error' ? '⚠️' : '✓'}</span>
-              <span>{message.text}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <label className="input-label">Next of Kin Phone Number</label>
-              <input
-                type="tel"
-                className="input-field"
-                placeholder="07XX XXX XXX"
-                value={phoneNumber}
-                onChange={handlePhoneChange}
-                disabled={isLoading}
-                required
-                autoFocus
-              />
+          <div className="card">
+            <div className="logo">
+              <div className="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              </div>
+              <h1>Rest Point</h1>
+              <p>Family Memorial Portal</p>
             </div>
 
-            <button type="submit" className="btn" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <div className="spinner"></div>
-                  <span>Searching...</span>
-                </>
-              ) : (
-                'Access Memorial'
-              )}
-            </button>
-          </form>
+            <div className="info">
+              Enter the <strong>phone number</strong> of the next of kin registered with the funeral home. We'll locate your loved one's records automatically.
+            </div>
 
-          <div className="footer">
-            <a href="/support">Need help?</a>
-            <span>•</span>
-            <a href="mailto:info@restpoint.co.ke">info@restpoint.co.ke</a>
-            <span>•</span>
-            <a href="/">Rest Point home</a>
+            {message.text && (
+              <div className={`message ${message.type}`} style={{ animation: 'fadeIn 0.3s ease' }}>
+                <span>{message.type === 'error' ? '⚠️' : '✓'}</span>
+                <span>{message.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin}>
+              <div className="form-group">
+                <label className="input-label">Next of Kin Phone Number</label>
+                <input
+                  type="tel"
+                  className="input-field"
+                  placeholder="07XX XXX XXX"
+                  value={phoneNumber}
+                  onChange={handlePhoneChange}
+                  disabled={isLoading}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <button type="submit" className="btn" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <div className="spinner"></div>
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    Access Memorial
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="divider"></div>
+
+            <div className="footer">
+              <a href="/">← Back to Rest Point</a>
+              <span>•</span>
+              <a href="mailto:info@restpoint.co.ke">Support</a>
+              <span>•</span>
+              <a href="/login">Staff Login</a>
+            </div>
           </div>
         </div>
       </div>

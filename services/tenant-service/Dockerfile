@@ -19,8 +19,8 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine AS production
+# Production stage - Use same Node version as builder
+FROM node:20-alpine AS production
 
 # Install runtime dependencies
 RUN apk add --no-cache dumb-init
@@ -46,16 +46,16 @@ RUN mkdir -p /usr/src/app/uploads && chown -R nodejs:nodejs /usr/src/app
 # Switch to non-root user
 USER nodejs
 
-# Expose port
-EXPOSE 8002
+# Expose port - Match docker-compose expected port
+EXPOSE 5002
 
 # Set environment
 ENV NODE_ENV=production
-ENV PORT=8002
+ENV PORT=5002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8002/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5002/health || exit 1
 
 # Start application with dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
