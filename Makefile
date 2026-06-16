@@ -241,14 +241,14 @@ notification-logs: ## Show notification-service logs
 # QR CODE SERVICE
 # ============================================
 
-qrcode-up: ## Start qrcode-service only
-	docker compose up -d qrcode-service
+# qrcode-up: ## Start qrcode-service only
+# 	docker compose up -d qrcode-service
 
-qrcode-down: ## Stop qrcode-service
-	docker compose stop qrcode-service
+# qrcode-down: ## Stop qrcode-service
+# 	docker compose stop qrcode-service
 
-qrcode-logs: ## Show qrcode-service logs
-	docker compose logs -f qrcode-service
+# qrcode-logs: ## Show qrcode-service logs
+# 	docker compose logs -f qrcode-service
 
 # ============================================
 # VISITORS SERVICE
@@ -280,14 +280,14 @@ bodycheckout-logs: ## Show bodycheckout-service logs
 # EXTRA SERVICES
 # ============================================
 
-extra-up: ## Start extra-services only
-	docker compose up -d extra-services
+# extra-up: ## Start extra-services only
+# 	docker compose up -d extra-services
 
-extra-down: ## Stop extra-services
-	docker compose stop extra-services
+# extra-down: ## Stop extra-services
+# 	docker compose stop extra-services
 
-extra-logs: ## Show extra-services logs
-	docker compose logs -f extra-services
+# extra-logs: ## Show extra-services logs
+# 	docker compose logs -f extra-services
 
 # ============================================
 # UPDATES SERVICE
