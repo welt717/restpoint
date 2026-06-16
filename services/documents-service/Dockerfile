@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8012
 ENV PORT=8012
-CMD ["node", "server.js"]
+CMD ["node", "services/documents-service/server.js"]

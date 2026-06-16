@@ -22,6 +22,7 @@
     "@montezuma/shared-logger": "file:../../packages/shared-logger",
     "@montezuma/shared-services": "file:../../packages/shared-services",
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
     "bullmq": "^5.61.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",

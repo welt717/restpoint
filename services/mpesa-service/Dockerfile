@@ -11,4 +11,4 @@ COPY . .
 
 EXPOSE 8007
 ENV PORT=8007
-CMD ["node", "server.js"]
+CMD ["node", "services/mpesa-service/server.js"]

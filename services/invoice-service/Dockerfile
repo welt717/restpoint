@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8006
 ENV PORT=8006
-CMD ["node", "server.js"]
+CMD ["node", "services/invoice-service/server.js"]

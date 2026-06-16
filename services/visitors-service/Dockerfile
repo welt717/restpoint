@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8010
 ENV PORT=8010
-CMD ["node", "server.js"]
+CMD ["node", "services/visitors-service/server.js"]

@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 5017
 ENV PORT=5017
-CMD ["node", "sendNotificationUpdates.js"]
+CMD ["node", "services/updates/sendNotificationUpdates.js"]

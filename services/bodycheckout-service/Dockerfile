@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8015
 ENV PORT=8015
-CMD ["node", "server.js"]
+CMD ["node", "services/bodycheckout-service/server.js"]

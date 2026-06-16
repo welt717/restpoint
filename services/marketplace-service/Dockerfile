@@ -11,4 +11,4 @@ COPY . .
 
 EXPOSE 8010
 ENV PORT=8010
-CMD ["node", "server.js"]
+CMD ["node", "services/marketplace-service/server.js"]

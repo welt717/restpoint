@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8011
 ENV PORT=8011
-CMD ["node", "server.js"]
+CMD ["node", "services/notification-service/server.js"]

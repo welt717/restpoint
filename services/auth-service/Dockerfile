@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8001
 ENV PORT=8001
-CMD ["node", "server.js"]
+CMD ["node", "services/auth-service/server.js"]

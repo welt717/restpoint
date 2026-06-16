@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8008
 ENV PORT=8008
-CMD ["node", "server.js"]
+CMD ["node", "services/coffin-service/server.js"]

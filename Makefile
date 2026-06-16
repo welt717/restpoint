@@ -44,7 +44,7 @@ ps: ## Show status of all services
 	docker compose ps
 
 build: ## Build all services without starting
-	docker compose build
+	docker compose build --no-cache
 
 clean: ## Stop and remove all containers, networks, but preserve volumes
 	docker compose down

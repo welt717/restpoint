@@ -11,4 +11,4 @@ COPY . .
 
 EXPOSE 8016
 ENV PORT=8016
-CMD ["node", "server.js"]
+CMD ["node", "services/extra-services/server.js"]

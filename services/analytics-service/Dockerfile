@@ -5,4 +5,4 @@ RUN npm install --omit=dev
 COPY . .
 EXPOSE 8013
 ENV PORT=8013
-CMD ["node", "server.js"]
+CMD ["node", "services/analytics-service/server.js"]
