@@ -28,6 +28,7 @@
     "date-fns": "^4.4.0",
     "fabric": "^7.4.0",
     "framer-motion": "^11.0.0",
+    "jquery": "^3.7.1",
     "lucide-react": "^0.344.0",
     "moment": "^2.29.4",
     "pdfjs-dist": "^4.0.0",

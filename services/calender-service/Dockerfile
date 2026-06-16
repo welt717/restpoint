@@ -2,6 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
+# Copy workspace-level tsconfig.base.json (referenced by tsconfig.json extends ../../tsconfig.base.json)
+COPY tsconfig.base.json /tsconfig.base.json
+
 COPY services/calender-service/package.json services/calender-service/tsconfig.json ./
 RUN npm install
 
