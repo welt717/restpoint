@@ -42,9 +42,9 @@ services:
     restart: unless-stopped
 
   # ============================================
-  # API GATEWAY
+  # RESTPOINT GATEWAY
   # ============================================
-  api-gateway:
+  restpoint-gateway:
     build:
       context: .
       dockerfile: services/api-gateway/Dockerfile
@@ -53,6 +53,9 @@ services:
       - "${API_GATEWAY_PORT:-5000}:5000"
     env_file:
       - .env
+    environment:
+      - SERVICE_NAME=restpoint-gateway
+      - PORT=5000
     depends_on:
       redis:
         condition: service_healthy
@@ -61,6 +64,12 @@ services:
     networks:
       - restpoint_net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================
   # AUTH SERVICE
@@ -518,7 +527,7 @@ services:
     env_file:
       - .env
     depends_on:
-      - api-gateway
+      - restpoint-gateway
     networks:
       - restpoint_net
     restart: unless-stopped

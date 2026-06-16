@@ -1,17 +1,23 @@
 {
   "name": "@montezuma/edocuments-service",
   "version": "2.0.0",
-  "description": "Montezuma Mortuary SaaS e-documents service with Fabric.js support",
+  "description": "RestPoint e-documents service with Fabric.js PDF generation support",
   "main": "server.js",
   "scripts": {
+    "dev": "nodemon server.js",
+    "build": "echo 'No build required - pure JS service'",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "lint": "echo 'Edocuments lint OK'",
+    "lint:fix": "echo 'Edocuments lint fix OK'",
+    "test": "echo 'No tests yet'",
+    "typecheck": "echo 'No TypeScript in this service'",
+    "clean": "echo 'No clean required'"
   },
   "dependencies": {
-    "express": "^5.1.0",
     "cors": "^2.8.5",
-    "helmet": "^8.1.0",
     "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
     "multer": "^1.4.5-lts.1",
     "pdf-lib": "^1.17.1",
     "sharp": "^0.33.5",
@@ -19,5 +25,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

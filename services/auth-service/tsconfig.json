@@ -1,18 +1,14 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "allowJs": true,
     "outDir": "./dist",
-    "rootDir": "./",
-    "strict": false,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "allowJs": true
   },
-  "include": ["**/*.ts", "**/*.js"],
+  "include": ["*.ts", "src/**/*.ts", "controllers/**/*.ts", "models/**/*.ts", "routes/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

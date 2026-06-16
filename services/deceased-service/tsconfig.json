@@ -2,24 +2,14 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "../..",
-    "types": ["node"],
-    "lib": ["ES2022"],
+    "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "composite": true,
     "strict": false,
     "noImplicitAny": false,
-    "strictNullChecks": true,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
-    "exactOptionalPropertyTypes": false,
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../../shared/*"],
-      "@shared": ["../../shared"]
-    }
+    "noUncheckedIndexedAccess": false
   },
   "include": [
     "server.ts",

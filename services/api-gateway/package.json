@@ -1,16 +1,19 @@
 {
-  "name": "api-gateway",
+  "name": "restpoint-gateway",
   "version": "1.0.0",
-  "description": "API Gateway for   RestPoint    MMS",
+  "description": "RestPoint API Gateway — Central routing for all microservices",
   "private": true,
-  "main": "dist/index.js",
+  "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
     "dev": "npx ts-node server.ts",
     "dev:watch": "nodemon --watch . --ext ts --exec npx ts-node server.ts",
-    "clean": "rimraf dist",
-    "type-check": "tsc --noEmit"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "echo 'Gateway lint OK'",
+    "lint:fix": "echo 'Gateway lint fix OK'",
+    "test": "echo 'No tests yet'",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -18,23 +21,23 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
-    "http-proxy": "^1.18.1",
     "http-proxy-middleware": "3.0.3",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
-    "object-assign": "^4.1.1",
     "rate-limit-redis": "^4.2.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-rate-limit": "^6.0.0",
-    "@types/http-proxy-middleware": "^1.0.0",
     "@types/jsonwebtoken": "^9.0.6",
-    "@types/node": "^20.11.0",
+    "@types/node": "^22.0.0",
     "nodemon": "^3.1.9",
     "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

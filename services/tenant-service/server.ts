@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import onboardingRoutes from './routes/onboardingRoutes';
+import systemAdminRoutes from './routes/systemAdminRoutes';
 
 dotenv.config();
 
@@ -36,6 +37,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // ROUTES
 // ============================================
 app.use('/api/onboarding', onboardingRoutes);
+
+// System Admin Routes - centralized tenant management
+app.use('/api/system-admin', systemAdminRoutes);
 
 // ============================================
 // HEALTH CHECK

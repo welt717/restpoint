@@ -3,17 +3,33 @@
   "version": "1.0.0",
   "description": "Restpoint — Modern Kenyan Mortuary Management SaaS Platform",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "yarn": ">=1.22.0"
+  },
   "workspaces": [
     "packages/*",
     "services/*"
   ],
   "scripts": {
-    "bootstrap": "npm install",
-    "docker:up": "docker-compose up --build -d",
-    "docker:down": "docker-compose down"
+    "dev": "concurrently -n gateway,services -c blue,green \"yarn workspace restpoint-gateway dev\" \"yarn workspaces run dev\"",
+    "build": "yarn workspaces run build",
+    "start": "yarn workspaces run start",
+    "lint": "yarn workspaces run lint",
+    "lint:fix": "yarn workspaces run lint:fix",
+    "test": "yarn workspaces run test",
+    "typecheck": "yarn workspaces run typecheck",
+    "clean": "yarn workspaces run clean",
+    "setup": "yarn install",
+    "bootstrap": "yarn install",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=100",
+    "docker:rebuild": "docker compose down && docker compose build --no-cache && docker compose up -d"
   },
   "dependencies": {},
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "typescript": "^5.8.2"
   }
 }

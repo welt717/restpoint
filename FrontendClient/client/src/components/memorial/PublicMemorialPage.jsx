@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { Heart, MessageCircle, Share2, Flame, Clock, MapPin, Calendar } from 'lucide-react';
+import { Heart, MessageCircle, Share2,  Clock, MapPin, Calendar } from 'lucide-react';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 

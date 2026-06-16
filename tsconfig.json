@@ -1,32 +1,9 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "lib": ["ES2022"],
-    "types": ["node"],
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./",
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["shared/*"],
-      "@shared": ["shared"],
-      "@packages/*": ["packages/*"],
-      "@services/*": ["services/*"]
-    }
+    "rootDir": ".",
+    "noEmit": true
   },
   "include": [
     "shared/**/*",
@@ -39,6 +16,7 @@
     "build",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "FrontendClient/**/*"
+    "FrontendClient/**/*",
+    "services/**/node_modules/**/*"
   ]
 }
