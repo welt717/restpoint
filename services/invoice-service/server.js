@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { safeMasterQuery } = require('../../shared/dbConfig');
+const { safeQuery } = require('../../shared/dbConfig');
 const { validateTenantActive } = require('../../shared/tenancy');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const invoice = require('./routes/invoice');
@@ -10,10 +10,10 @@ const printInvoiceRoute = require('./routes/printInvoiceRoute');
 const app = express();
 const PORT = process.env.PORT || 5005;
 
-// CORS configuration
+// CORS configuration - Allow credentials for proxied requests
 app.use(cors({
-  origin: true,
-  credentials: true,
+  origin: true, // Allow any origin (API gateway handles origin validation)
+  credentials: true, // Allow credentials
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-csrf-token', 'x-tenant-slug'],
 }));

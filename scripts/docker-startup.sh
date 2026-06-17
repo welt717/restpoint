@@ -20,6 +20,14 @@ for dep in "mysql2" "jsonwebtoken" "dotenv"; do
   fi
 done
 
+# Verify mysql2/promise subpath is accessible (it's part of mysql2 package)
+if node -e "require('mysql2')" 2>/dev/null; then
+  if ! node -e "require('mysql2/promise')" 2>/dev/null; then
+    echo "   Warning: mysql2 is installed but mysql2/promise is not available. Reinstalling..."
+    npm install --no-save "mysql2" 2>/dev/null || true
+  fi
+fi
+
 # Ensure shared modules directory exists
 if [ -d "/usr/src/app/shared" ]; then
   echo "✅ [Startup] Shared modules found at /usr/src/app/shared"

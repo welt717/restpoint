@@ -9,6 +9,9 @@ RUN cd services/marketplace-service && \
     npm config set fetch-retries 10 && \
     npm install --omit=dev
 
+# Copy global middleware (needed by server.js)
+COPY services/global/ ./services/global/
+
 # Copy service source code
 COPY services/marketplace-service/ ./services/marketplace-service/
 

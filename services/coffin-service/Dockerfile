@@ -12,6 +12,7 @@ RUN cd services/coffin-service && npm install --omit=dev
 # Copy shared modules (needed by @montezuma/shared-config)
 COPY shared/ ./shared/
 COPY global/ ./global/
+COPY services/utilities/ ./services/utilities/
 COPY packages/shared-config/ ./packages/shared-config/
 COPY packages/shared-logger/ ./packages/shared-logger/
 COPY packages/shared-utils/ ./packages/shared-utils/
