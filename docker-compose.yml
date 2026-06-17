@@ -1,45 +1,5 @@
 services:
   # ============================================
-  # DATABASE - MariaDB (Centralized)
-  # ============================================
-  mariadb:
-    image: mariadb:10.11
-    container_name: restpoint_db
-    environment:
-      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:-root}
-      MARIADB_DATABASE: restpoint_system
-    ports:
-      - "${DB_PORT:-3307}:3306"
-    volumes:
-      - mariadb_data:/var/lib/mysql
-    networks:
-      - restpoint_net
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # ============================================
-  # CACHE - Redis
-  # ============================================
-  redis:
-    image: redis:7-alpine
-    container_name: restpoint_redis
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    ports:
-      - "${REDIS_PORT:-6380}:6379"
-    networks:
-      - restpoint_net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-
-  # ============================================
   # RESTPOINT GATEWAY
   # ============================================
   restpoint-gateway:
@@ -54,11 +14,6 @@ services:
     environment:
       - SERVICE_NAME=restpoint-gateway
       - PORT=5000
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -81,11 +36,6 @@ services:
       - "${AUTH_SERVICE_PORT:-5001}:5001"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -102,11 +52,6 @@ services:
       - "${TENANT_SERVICE_PORT:-5002}:5002"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -123,11 +68,6 @@ services:
       - "${DECEASED_SERVICE_PORT:-5003}:5003"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -144,11 +84,6 @@ services:
       - "${MARKETPLACE_SERVICE_PORT:-5004}:5004"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -165,11 +100,6 @@ services:
       - "${INVOICE_SERVICE_PORT:-5005}:5005"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -186,11 +116,6 @@ services:
       - "${COFFIN_SERVICE_PORT:-5006}:5006"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -207,11 +132,6 @@ services:
       - "${DOCUMENTS_SERVICE_PORT:-5007}:5007"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -228,11 +148,6 @@ services:
       - "${EDOCUMENTS_SERVICE_PORT:-5008}:5008"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -249,11 +164,6 @@ services:
       - "${ANALYTICS_SERVICE_PORT:-5009}:5009"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -270,11 +180,6 @@ services:
       - "${CALENDER_SERVICE_PORT:-5010}:5010"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -291,15 +196,9 @@ services:
       - "${MPESA_SERVICE_PORT:-5011}:5011"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
-
 
   # ============================================
   # NOTIFICATION SERVICE
@@ -313,11 +212,6 @@ services:
       - "${NOTIFICATION_SERVICE_PORT:-5111}:5111"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -334,15 +228,9 @@ services:
       - "${QR_CODE_SERVICE_PORT:-5012}:5012"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
-
 
   # ============================================
   # SOCKETIO SERVICE
@@ -356,11 +244,6 @@ services:
       - "${SOCKETIO_SERVICE_PORT:-5013}:5013"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -377,11 +260,6 @@ services:
       - "${VISITORS_SERVICE_PORT:-5014}:5014"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -398,11 +276,6 @@ services:
       - "${BODYCHECKOUT_SERVICE_PORT:-5015}:5015"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -419,11 +292,6 @@ services:
       - "${EXTRA_SERVICES_PORT:-5016}:5016"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -440,11 +308,6 @@ services:
       - "${UPDATES_SERVICE_PORT:-5017}:5017"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -461,11 +324,6 @@ services:
       - "${CALL_SERVICE_PORT:-5018}:5018"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -482,11 +340,6 @@ services:
       - "${PORTAL_SERVICE_PORT:-5019}:5019"
     env_file:
       - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
@@ -503,18 +356,13 @@ services:
       - "${CHEMICAL_SERVICE_PORT:-5105}:5105"
     env_file:
       - .env
-    depends_on:
-      mariadb:
-        condition: service_healthy
     networks:
       - restpoint_net
     restart: unless-stopped
 
   # ============================================
   # FRONTEND - React UI (Port 8082)
-  # Production: docker run -d --name restpoint-frontend -p 8082:8082 frontend
   # ============================================
-
   frontend:
     build:
       context: ./FrontendClient/client
@@ -533,6 +381,3 @@ services:
 networks:
   restpoint_net:
     driver: bridge
-
-volumes:
-  mariadb_data:
