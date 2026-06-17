@@ -19,7 +19,8 @@
     "mysql2": "3.6.5",
     "object-assign": "^4.1.1",
     "semver": "^7.7.3",
-    "validator": "13.11.0"
+    "validator": "13.11.0",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

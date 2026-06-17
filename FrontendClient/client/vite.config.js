@@ -15,7 +15,7 @@ export default defineConfig({
       timeout: 120000
     },
     allowedHosts: [
-      'respoint.co.ke',
+      'restpoint.co.ke',
       'app.restpoint.co.ke',
       'localhost'
     ],

@@ -24,7 +24,11 @@
     "http-proxy-middleware": "3.0.3",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
-    "rate-limit-redis": "^4.2.0"
+    "rate-limit-redis": "^4.2.0",
+    "eslint-plugin-security": "^4.0.1",
+    "mysql2": "^3.22.5",
+    "express-async-handler": "^1.2.0",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

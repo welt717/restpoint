@@ -27,7 +27,8 @@
     "object-assign": "^4.1.1",
     "winston": "^3.18.3",
     "ioredis": "^5.8.2",
-    "express-async-handler": "^1.2.0"
+    "express-async-handler": "^1.2.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

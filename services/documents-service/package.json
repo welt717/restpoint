@@ -18,7 +18,8 @@
     "object-assign": "^4.1.1",
     "winston": "^3.18.3",
     "ioredis": "^5.8.2",
-    "bullmq": "^5.61.2"
+    "bullmq": "^5.61.2",
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

@@ -1,6 +1,6 @@
 FROM node:18-alpine
 WORKDIR /usr/src/app
-COPY package*.json ./
+COPY services/analytics-service/package.json ./
 RUN npm install --omit=dev
 COPY . .
 EXPOSE 8013
